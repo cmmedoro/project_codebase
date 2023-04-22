@@ -9,9 +9,28 @@ from torch.utils.data.dataloader import DataLoader
 from pytorch_lightning.callbacks import ModelCheckpoint
 
 import utils
-import parser
+import parser1
 from datasets.test_dataset import TestDataset
 from datasets.train_dataset import TrainDataset
+
+import torch.nn as nn
+import torch.nn.functional as F
+
+# class to implement the GeM pooling layer, to substitute to the current Average Pooling layer of ResNet-18
+class GeM(nn.Module):
+    def __init__(self, p=3, eps=1e-6):
+        super(GeM,self).__init__()
+        self.p = nn.Parameter(torch.ones(1)*p)
+        self.eps = eps
+
+    def forward(self, x):
+        return self.gem(x, p=self.p, eps=self.eps)
+        
+    def gem(self, x, p=3, eps=1e-6):
+        return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1./p)
+        
+    def __repr__(self):
+        return self.__class__.__name__ + '(' + 'p=' + '{:.4f}'.format(self.p.data.tolist()[0]) + ', ' + 'eps=' + str(self.eps) + ')'
 
 
 class LightningModel(pl.LightningModule):
@@ -25,6 +44,8 @@ class LightningModel(pl.LightningModule):
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         # Change the output of the FC layer to the desired descriptors dimension
         self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
+        # Change the Average Pooling layer with the GeM pooling one
+        self.model.avgpool = GeM()
         # Set the loss function
         self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
 
@@ -108,7 +129,7 @@ def get_datasets_and_dataloaders(args):
 
 
 if __name__ == '__main__':
-    args = parser.parse_arguments()
+    args = parser1.parse_arguments()
 
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
     model = LightningModel(val_dataset, test_dataset, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds)
