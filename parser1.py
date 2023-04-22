@@ -35,6 +35,8 @@ def parse_arguments():
                         help="path to val set (must contain database and queries)")
     parser.add_argument("--test_path", type=str, default="data/sf_xs/test",
                         help="path to test set (must contain database and queries)")
+    parser.add_argument("--ckpt_path", type=str, default="/kaggle/input/simple-vpr-codebase/_epoch(19)_step(19540)_R@1[0.0000]_R@5[0.0000].ckpt",
+                        help="path to checkpoint")
     
     args = parser.parse_args()
     return args

@@ -159,5 +159,8 @@ if __name__ == '__main__':
     )
     trainer.validate(model=model, dataloaders=val_loader)
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    trainer.test(model=model, dataloaders=test_loader)
+    trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)
+    #trainer.validate(model=model, dataloaders=val_loader)
+    #trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    #trainer.test(model=model, dataloaders=test_loader,ckpt_path=args.ckpt_path)
 
