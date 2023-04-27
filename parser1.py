@@ -19,6 +19,12 @@ def parse_arguments():
     # Architecture parameters
     parser.add_argument("--descriptors_dim", type=int, default=512,
                         help="dimensionality of the output descriptors")
+    parser.add_argument("--loss_func", type=str, default="contrastive_loss",
+                        help="training loss to implement")
+    parser.add_argument("--miner", type=str, default=None,
+                        help="miner to implement")
+    parser.add_argument("--optimizer", type=str, default="SGD",
+                        help="define the optimizer to implement")
     
     # Visualizations parameters
     parser.add_argument("--num_preds_to_save", type=int, default=0,
