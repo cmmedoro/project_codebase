@@ -5,24 +5,24 @@ from pytorch_metric_learning import miners
 
 def get_loss(loss_name):
     if loss_name == "contrastive_loss":
-        return losses.contrastive_loss(pos_margin=0, neg_margin=1)
+        return losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
     if loss_name == "triplet_margin":
-        return losses.triplet_margin_loss()
+        return losses.TripletMarginLoss()
     if loss_name == "multisimilarity":
-        return losses.multi_similarity_loss()
+        return losses.MultiSimilarityLoss()
     if loss_name == "cosface":
-        return losses.cosface_loss()
+        return losses.CosFaceLoss()
     if loss_name == "arcface": #requires an optimizer; cosine similarity is the only compatible distance
-        return losses.arcface_loss()
+        return losses.ArcFaceLoss()
     if loss_name == "vicreg":
-        return losses.vicreg_loss()
+        return losses.VICRegLoss()
 
 def get_miner(miner_name):
     miner = None
     if miner_name == "triplet_margin":
-        miner = miners.triplet_margin_miner()
+        miner = miners.TripletMarginMiner()
     if miner_name == "multisimilarity":
-        miner = miners.multi_similarity_miner()
+        miner = miners.TripletMarginMiner()
     if miner_name == "batch_hard":
-        miner = miners.batch_hard_miner()
+        miner = miners.BatchHardMiner()
     return miner
