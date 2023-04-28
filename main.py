@@ -76,7 +76,7 @@ class LightningModel(pl.LightningModule):
     def loss_function(self, descriptors, labels):
         if self.miner is not None: #if I have selected a miner
             miner_outputs = self.miner(descriptors, labels)
-            loss = self.loss_fn(descriptors, labels)
+            loss = self.loss_fn(descriptors, labels, miner_outputs)
         else:
             loss = self.loss_fn(descriptors, labels)
         return loss
