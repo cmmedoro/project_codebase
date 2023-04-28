@@ -21,7 +21,7 @@ import loss_miner as lm
 class GeM(nn.Module):
     def __init__(self, p=3, eps=1e-6):
         super(GeM,self).__init__()
-        self.p = nn.Parameter(torch.ones(1)*p)
+        self.p = nn.Parameter(torch.ones(1)*p, requires_grad=True)
         self.eps = eps
 
     def forward(self, x):
