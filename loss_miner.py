@@ -3,7 +3,7 @@ from pytorch_metric_learning import miners
 
 #standard implementation for losses and miners (for now): with default parameters
 
-def get_loss(loss_name):#add num_classes to give to CosFace and ArcFace
+def get_loss(loss_name, num_classes):#add num_classes to give to CosFace and ArcFace
     if loss_name == "contrastive_loss":
         return losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
     if loss_name == "triplet_margin":
@@ -11,9 +11,9 @@ def get_loss(loss_name):#add num_classes to give to CosFace and ArcFace
     if loss_name == "multisimilarity":
         return losses.MultiSimilarityLoss()
     if loss_name == "cosface":
-        return losses.CosFaceLoss(num_classes = 16, embedding_size = 512)
+        return losses.CosFaceLoss(num_classes = num_classes, embedding_size = 512)
     if loss_name == "arcface": #requires an optimizer; cosine similarity is the only compatible distance
-        return losses.ArcFaceLoss(num_classes = 16, embedding_size = 512)
+        return losses.ArcFaceLoss(num_classes = num_classes, embedding_size = 512)
     if loss_name == "vicreg":
         return losses.VICRegLoss()
 
