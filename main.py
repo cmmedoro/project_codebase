@@ -53,7 +53,7 @@ class LightningModel(pl.LightningModule):
         self.model.avgpool = GeM()
         # Set the loss function
         #self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
-        self.loss_fn = lm.get_loss(loss_name)#add num_classes -> idea: send not only the name of the loss you want
+        self.loss_fn = lm.get_loss(loss_name, 6200)#add num_classes -> idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
         # Set the miner
         self.miner = lm.get_miner(miner_name)
