@@ -86,6 +86,11 @@ class LightningModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         images, labels = batch
         num_places, num_images_per_place, C, H, W = images.shape
+        print(num_places)
+        print(num_images_per_place)
+        print(C)
+        print(H)
+        print(W)
         images = images.view(num_places * num_images_per_place, C, H, W)
         labels = labels.view(num_places * num_images_per_place)
 
