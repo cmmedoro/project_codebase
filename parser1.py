@@ -23,7 +23,7 @@ def parse_arguments():
                         help="training loss to implement")
     parser.add_argument("--miner", type=str, default=None,
                         help="miner to implement")
-    parser.add_argument("--optimizer", type=str, default="SGD",
+    parser.add_argument("--optimizer", type=str, default="adam",
                         help="define the optimizer to implement")
     
     # Visualizations parameters
