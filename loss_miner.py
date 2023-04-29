@@ -3,7 +3,7 @@ from pytorch_metric_learning import miners
 
 #standard implementation for losses and miners (for now): with default parameters
 
-def get_loss(loss_name):
+def get_loss(loss_name):#add num_classes to give to CosFace and ArcFace
     if loss_name == "contrastive_loss":
         return losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
     if loss_name == "triplet_margin":

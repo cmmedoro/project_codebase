@@ -35,7 +35,7 @@ class GeM(nn.Module):
 
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD"):
+    def __init__(self, val_dataset, test_dataset, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD"):#add num_classes as param
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -53,7 +53,8 @@ class LightningModel(pl.LightningModule):
         self.model.avgpool = GeM()
         # Set the loss function
         #self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
-        self.loss_fn = lm.get_loss(loss_name)
+        self.loss_fn = lm.get_loss(loss_name)#add num_classes -> idea: send not only the name of the loss you want
+                                            # but also the num_classes in case it is CosFace or ArcFace
         # Set the miner
         self.miner = lm.get_miner(miner_name)
 
@@ -144,14 +145,16 @@ def get_datasets_and_dataloaders(args):
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
-    return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader
+    #num_classes = train_dataset.__len__()
+    return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader#, num_classes
 
 
 if __name__ == '__main__':
     args = parser1.parse_arguments()
 
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
-    model = LightningModel(val_dataset, test_dataset, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer)
+    #train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader, num_classes = get_datasets_and_dataloaders(args)
+    model = LightningModel(val_dataset, test_dataset, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer)#num_classes to add as a new parameter
     
     # Model params saving using Pytorch Lightning. Save the best 3 models according to Recall@1
     checkpoint_cb = ModelCheckpoint(
