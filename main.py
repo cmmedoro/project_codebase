@@ -35,7 +35,7 @@ class GeM(nn.Module):
 
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD"):#add num_classes as param
+    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD"):#add num_classes as param
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -45,6 +45,8 @@ class LightningModel(pl.LightningModule):
         self.loss_name = loss_name
         self.miner_name = miner_name
         self.opt_name = opt_name
+        self.num_classes = num_classes
+        print(self.num_classes)
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         # Change the output of the FC layer to the desired descriptors dimension
@@ -53,8 +55,10 @@ class LightningModel(pl.LightningModule):
         self.model.avgpool = GeM()
         # Set the loss function
         #self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
-        self.loss_fn = lm.get_loss(loss_name, 6200)#add num_classes -> idea: send not only the name of the loss you want
+        self.loss_fn = lm.get_loss(loss_name, num_classes)#add num_classes -> idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
+        if loss_name == "cosface" or loss_name == "arcface":
+            self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr=0.01)
         # Set the miner
         self.miner = lm.get_miner(miner_name)
 
@@ -63,14 +67,17 @@ class LightningModel(pl.LightningModule):
         return descriptors
 
     def configure_optimizers(self):
-        if self.opt_name.lower() == "sgd":
+        if self.loss_name != "cosface" and self.loss_name != "arcface":
+            if self.opt_name.lower() == "sgd":
+                optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
+            if self.opt_name.lower() == "adamw":
+                optimizers = torch.optim.AdamW(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+            if self.opt_name.lower() == "adam":
+                optimizers = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+            if self.opt_name.lower() == "asgd":
+                optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
+        else:
             optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
-        if self.opt_name.lower() == "adamw":
-            optimizers = torch.optim.AdamW(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
-        if self.opt_name.lower() == "adam":
-            optimizers = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
-        if self.opt_name.lower() == "asgd":
-            optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
         return optimizers
 
     #  The loss function call (this method will be called at each training iteration)
@@ -86,11 +93,6 @@ class LightningModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         images, labels = batch
         num_places, num_images_per_place, C, H, W = images.shape
-        print(num_places)
-        print(num_images_per_place)
-        print(C)
-        print(H)
-        print(W)
         images = images.view(num_places * num_images_per_place, C, H, W)
         labels = labels.view(num_places * num_images_per_place)
 
@@ -150,16 +152,15 @@ def get_datasets_and_dataloaders(args):
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
-    #num_classes = train_dataset.__len__()
-    return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader#, num_classes
+    return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader
 
 
 if __name__ == '__main__':
     args = parser1.parse_arguments()
 
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
-    #train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader, num_classes = get_datasets_and_dataloaders(args)
-    model = LightningModel(val_dataset, test_dataset, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer)#num_classes to add as a new parameter
+    num_classes = train_dataset.__len__()
+    model = LightningModel(val_dataset, test_dataset, num_classes, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer)#num_classes to add as a new parameter
     
     # Model params saving using Pytorch Lightning. Save the best 3 models according to Recall@1
     checkpoint_cb = ModelCheckpoint(
