@@ -149,15 +149,15 @@ def get_datasets_and_dataloaders(args):
     train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
-    num_classes = train_dataset.__len__()
-    return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader, num_classes
+    return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader
 
 
 if __name__ == '__main__':
     args = parser1.parse_arguments()
 
     #train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
-    train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader, num_classes = get_datasets_and_dataloaders(args)
+    train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
+    num_classes = train_dataset.__len__()
     model = LightningModel(val_dataset, test_dataset, num_classes, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer)
     
     # Model params saving using Pytorch Lightning. Save the best 3 models according to Recall@1
