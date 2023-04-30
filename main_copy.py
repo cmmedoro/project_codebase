@@ -59,6 +59,8 @@ class LightningModel(pl.LightningModule):
         #self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
         self.loss_fn = lm.get_loss(loss_name, self.num_classes)#idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
+        if loss_name == "cosface" or loss_name == "arcface":
+            self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr=0.01)
         # Set the miner
         self.miner = lm.get_miner(miner_name)
 
@@ -67,14 +69,17 @@ class LightningModel(pl.LightningModule):
         return descriptors
 
     def configure_optimizers(self):
-        if self.opt_name.lower() == "sgd":
+        if self.loss_name != "cosface" and self.loss_name != "arcface":
+            if self.opt_name.lower() == "sgd":
+                optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
+            if self.opt_name.lower() == "adamw":
+                optimizers = torch.optim.AdamW(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+            if self.opt_name.lower() == "adam":
+                optimizers = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+            if self.opt_name.lower() == "asgd":
+                optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
+        else:
             optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
-        if self.opt_name.lower() == "adamw":
-            optimizers = torch.optim.AdamW(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
-        if self.opt_name.lower() == "adam":
-            optimizers = torch.optim.Adam(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
-        if self.opt_name.lower() == "asgd":
-            optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
         return optimizers
 
     #  The loss function call (this method will be called at each training iteration)
@@ -96,6 +101,7 @@ class LightningModel(pl.LightningModule):
         # Feed forward the batch to the model
         descriptors = self(images)  # Here we are calling the method forward that we defined above
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
+        self.loss_optimizer.step()
         
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}

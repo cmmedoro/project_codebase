@@ -1,5 +1,6 @@
 from pytorch_metric_learning import losses
 from pytorch_metric_learning import miners
+import torch
 
 #standard implementation for losses and miners (for now): with default parameters
 
@@ -11,9 +12,9 @@ def get_loss(loss_name, num_classes):#add num_classes to give to CosFace and Arc
     if loss_name == "multisimilarity":
         return losses.MultiSimilarityLoss()
     if loss_name == "cosface":
-        return losses.CosFaceLoss(num_classes = num_classes, embedding_size = 512)
+        return losses.CosFaceLoss(num_classes = num_classes, embedding_size = 512, margin = 0.35, scale = 64).to(torch.device('cuda'))
     if loss_name == "arcface": #requires an optimizer; cosine similarity is the only compatible distance
-        return losses.ArcFaceLoss(num_classes = num_classes, embedding_size = 512)
+        return losses.ArcFaceLoss(num_classes = num_classes, embedding_size = 512, margin=28.6, scale=64).to(torch.device('cuda'))
     if loss_name == "vicreg":
         return losses.VICRegLoss()
 
