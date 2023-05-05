@@ -57,8 +57,6 @@ class LightningModel(pl.LightningModule):
         #self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
         self.loss_fn = lm.get_loss(loss_name, num_classes)#add num_classes -> idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
-        if loss_name == "cosface" or loss_name == "arcface":
-            self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr=0.01)
         # Set the miner
         self.miner = lm.get_miner(miner_name)
 
@@ -78,7 +76,11 @@ class LightningModel(pl.LightningModule):
                 optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
         else:
             optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
-        return optimizers
+            self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
+            #cosface and arcface assume normalization ---> similar to linear layers
+        #if self.loss_name == "cosface" or self.loss_name == "arcface":
+         #   self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr=0.01)
+        return [optimizers, self.loss_optimizer]
 
     #  The loss function call (this method will be called at each training iteration)
     def loss_function(self, descriptors, labels):
