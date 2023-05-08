@@ -25,6 +25,8 @@ def parse_arguments():
                         help="miner to implement")
     parser.add_argument("--optimizer", type=str, default="adam",
                         help="define the optimizer to implement")
+    parser.add_argument("--aggr", type=str, default="gem",
+                        help="training aggregator to implement")
     
     # Visualizations parameters
     parser.add_argument("--num_preds_to_save", type=int, default=0,
