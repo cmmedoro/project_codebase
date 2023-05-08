@@ -65,18 +65,18 @@ class LightningModel(pl.LightningModule):
         return descriptors
 
     def configure_optimizers(self):
-        if self.loss_name != "cosface" and self.loss_name != "arcface":
-            if self.opt_name.lower() == "sgd":
-                optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
-            if self.opt_name.lower() == "adamw":
-                optimizers = torch.optim.AdamW(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
-            if self.opt_name.lower() == "adam":
-                optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
-            if self.opt_name.lower() == "asgd":
-                optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
-        else:
+        #if self.loss_name != "cosface" and self.loss_name != "arcface":
+        if self.opt_name.lower() == "sgd":
             optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
-            self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
+        if self.opt_name.lower() == "adamw":
+            optimizers = torch.optim.AdamW(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+        if self.opt_name.lower() == "adam":
+            optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+        if self.opt_name.lower() == "asgd":
+            optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
+        #else:
+            #optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
+        self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
             #cosface and arcface assume normalization ---> similar to linear layers
         #if self.loss_name == "cosface" or self.loss_name == "arcface":
          #   self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr=0.01)
