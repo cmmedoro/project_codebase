@@ -89,6 +89,7 @@ class LightningModel(pl.LightningModule):
             #cosface and arcface assume normalization ---> similar to linear layers
         return [optimizers, self.loss_optimizer]
 
+
     #  The loss function call (this method will be called at each training iteration)
     def loss_function(self, descriptors, labels):
         if self.miner is not None: #if I have selected a miner

@@ -16,6 +16,8 @@ from datasets.train_dataset import TrainDataset
 import torch.nn as nn
 import torch.nn.functional as F
 import loss_miner as lm
+import aggregators as ag
+import self_modules as sm
 
 # class to implement the GeM pooling layer, to substitute to the current Average Pooling layer of ResNet-18
 class GeM(nn.Module):
@@ -35,7 +37,7 @@ class GeM(nn.Module):
 
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD"):
+    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD", agg_arch='gem', agg_config={}):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -49,38 +51,51 @@ class LightningModel(pl.LightningModule):
         self.loss_name = loss_name
         self.miner_name = miner_name
         self.opt_name = opt_name
+        # Save the aggregator name
+        self.agg_arch = agg_arch
+        self.agg_config = agg_config
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
-        # Change the output of the FC layer to the desired descriptors dimension
-        self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
-        # Change the Average Pooling layer with the GeM pooling one
-        self.model.avgpool = GeM()
+        # Save in_features of model.fc
+        self.in_feats = self.model.fc.in_features
+        # eliminate last two layers
+        self.layers = list(self.model.children())[:-2]
+        # define backbone
+        self.backbone = torch.nn.Sequential(*self.layers)
+        if self.agg_arch == "gem":
+            self.aggregator = nn.Sequential(
+                ag.L2Norm(),
+                ag.get_aggregator(agg_arch, agg_config),
+                ag.Flatten(),
+                nn.Linear(self.in_feats, descriptors_dim),
+                ag.L2Norm()
+            )
+        elif self.agg_arch == "mixvpr":
+            self.aggregator = ag.get_aggregator(agg_arch, agg_config)
         # Set the loss function
         #self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
         self.loss_fn = lm.get_loss(loss_name, self.num_classes)#idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
-        if loss_name == "cosface" or loss_name == "arcface":
-            self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr=0.01)
         # Set the miner
         self.miner = lm.get_miner(miner_name)
 
     def forward(self, images):
-        descriptors = self.model(images)
+        descriptors = self.backbone(images)
+        descriptors = self.aggregator(descriptors) #OR images ???
         return descriptors
 
     def configure_optimizers(self):
-        if self.loss_name != "cosface" and self.loss_name != "arcface":
-            if self.opt_name.lower() == "sgd":
-                optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
-            if self.opt_name.lower() == "adamw":
-                optimizers = torch.optim.AdamW(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
-            if self.opt_name.lower() == "adam":
-                optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
-            if self.opt_name.lower() == "asgd":
-                optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
-        else:
+        if self.opt_name.lower() == "sgd":
             optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
-        return optimizers
+        if self.opt_name.lower() == "adamw":
+            optimizers = torch.optim.AdamW(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+        if self.opt_name.lower() == "adam":
+            optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
+        if self.opt_name.lower() == "asgd":
+            optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
+        self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
+        return [optimizers, self.loss_optimizer]
+
 
     #  The loss function call (this method will be called at each training iteration)
     def loss_function(self, descriptors, labels):
@@ -161,10 +176,9 @@ def get_datasets_and_dataloaders(args):
 if __name__ == '__main__':
     args = parser1.parse_arguments()
 
-    #train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
     num_classes = train_dataset.__len__()
-    model = LightningModel(val_dataset, test_dataset, num_classes, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer)
+    model = LightningModel(val_dataset, test_dataset, num_classes, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer, args.aggr)
     
     # Model params saving using Pytorch Lightning. Save the best 3 models according to Recall@1
     checkpoint_cb = ModelCheckpoint(
@@ -194,7 +208,4 @@ if __name__ == '__main__':
         trainer.validate(model=model, dataloaders=val_loader)
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)
-    #trainer.validate(model=model, dataloaders=val_loader)
-    #trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    #trainer.test(model=model, dataloaders=test_loader,ckpt_path=args.ckpt_path)
 
