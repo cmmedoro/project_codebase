@@ -93,8 +93,10 @@ class LightningModel(pl.LightningModule):
             optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
         if self.opt_name.lower() == "asgd":
             optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
-        self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
-        return [optimizers, self.loss_optimizer]
+        if self.loss_name == "cosface" or self.loss_name == "arcface":
+            self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
+            return [optimizers, self.loss_optimizer]
+        return optimizers
 
 
     #  The loss function call (this method will be called at each training iteration)
