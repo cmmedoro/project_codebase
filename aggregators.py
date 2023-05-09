@@ -1,7 +1,7 @@
 import numpy as np
 import main as aggregators
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 
 def get_aggregator(agg_arch, agg_config={}):
 
