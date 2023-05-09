@@ -1,13 +1,14 @@
 import numpy as np
-import main as aggregators
+import main as gem
 import torch
 import torch.nn.functional as F
+import self_modules as sm
 
 def get_aggregator(agg_arch, agg_config={}):
 
     if 'gem' in agg_arch.lower():
         agg_config={'p': 3}
-        return aggregators.GeM(**agg_config)
+        return gem.GeM(**agg_config)
     
     elif 'mixvpr' in agg_arch.lower():
         agg_config={'in_channels' : 1024,
@@ -17,7 +18,7 @@ def get_aggregator(agg_arch, agg_config={}):
                 'mix_depth' : 4,
                 'mlp_ratio' : 1,
                 'out_rows' : 4}
-        return aggregators.MixVPR(**agg_config)
+        return sm.MixVPR(**agg_config)
     
 class Flatten(torch.nn.Module):
     def __init__(self): super().__init__()
