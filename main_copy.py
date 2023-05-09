@@ -73,7 +73,6 @@ class LightningModel(pl.LightningModule):
         elif self.agg_arch == "mixvpr":
             self.aggregator = ag.get_aggregator(agg_arch, agg_config)
         # Set the loss function
-        #self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
         self.loss_fn = lm.get_loss(loss_name, self.num_classes)#idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
         # Set the miner

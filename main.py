@@ -55,8 +55,6 @@ class LightningModel(pl.LightningModule):
         print(self.num_classes)
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
-        # Change the output of the FC layer to the desired descriptors dimension
-        self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
         # Save in_features of model.fc
         self.in_feats = self.model.fc.in_features
         # eliminate last two layers
@@ -98,7 +96,7 @@ class LightningModel(pl.LightningModule):
         if self.loss_name == "cosface" or self.loss_name == "arcface":
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
             return [optimizers, self.loss_optimizer]
-        return [optimizers, self.loss_optimizer]
+        return optimizers
 
 
     #  The loss function call (this method will be called at each training iteration)
