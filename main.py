@@ -37,7 +37,7 @@ class GeM(nn.Module):
 
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD", agg_arch='gem', agg_config={}):#add num_classes as param
+    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD", agg_arch='gem', agg_config={}):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -57,24 +57,35 @@ class LightningModel(pl.LightningModule):
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         # Change the output of the FC layer to the desired descriptors dimension
         self.model.fc = torch.nn.Linear(self.model.fc.in_features, descriptors_dim)
-        # Change the Average Pooling layer with the GeM pooling one
-        self.model.avgpool = sm.GeM()
+        # Save in_features of model.fc
+        self.in_feats = self.model.fc.in_features
+        # eliminate last two layers
+        self.layers = list(self.model.children())[:-2]
+        # define backbone
+        self.backbone = torch.nn.Sequential(*self.layers)
+        if self.agg_arch == "gem":
+            self.aggregator = nn.Sequential(
+                ag.L2Norm(),
+                ag.get_aggregator(agg_arch, agg_config),
+                ag.Flatten(),
+                nn.Linear(self.in_feats, descriptors_dim),
+                ag.L2Norm()
+            )
+        elif self.agg_arch == "mixvpr":
+            self.aggregator = ag.get_aggregator(agg_arch, agg_config)
         # Set the loss function
-        #self.loss_fn = losses.ContrastiveLoss(pos_margin=0, neg_margin=1)
         self.loss_fn = lm.get_loss(loss_name, num_classes)#add num_classes -> idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
         # Set the miner
         self.miner = lm.get_miner(miner_name)
-        # Set the aggregator
-        self.aggregator = ag.get_aggregator(agg_arch, agg_config)
 
 
     def forward(self, images):
-        descriptors = self.model(images)
+        descriptors = self.backbone(images)
+        descriptors = self.aggregator(descriptors)
         return descriptors
 
     def configure_optimizers(self):
-        #if self.loss_name != "cosface" and self.loss_name != "arcface":
         if self.opt_name.lower() == "sgd":
             optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
         if self.opt_name.lower() == "adamw":
@@ -83,10 +94,10 @@ class LightningModel(pl.LightningModule):
             optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
         if self.opt_name.lower() == "asgd":
             optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
-        #else:
-            #optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
-        self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
-            #cosface and arcface assume normalization ---> similar to linear layers
+        #cosface and arcface assume normalization ---> similar to linear layers
+        if self.loss_name == "cosface" or self.loss_name == "arcface":
+            self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
+            return [optimizers, self.loss_optimizer]
         return [optimizers, self.loss_optimizer]
 
 
@@ -200,7 +211,4 @@ if __name__ == '__main__':
         trainer.validate(model=model, dataloaders=val_loader)
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)
-    #trainer.validate(model=model, dataloaders=val_loader)
-    #trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    #trainer.test(model=model, dataloaders=test_loader,ckpt_path=args.ckpt_path)
 
