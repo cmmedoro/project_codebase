@@ -95,7 +95,7 @@ class LightningModel(pl.LightningModule):
         if self.loss_name == "cosface" or self.loss_name == "arcface":
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
             return [optimizers, self.loss_optimizer]
-        return optimizers
+        return [optimizers]
 
 
     #  The loss function call (this method will be called at each training iteration)
@@ -108,7 +108,7 @@ class LightningModel(pl.LightningModule):
         return loss
 
     # This is the training step that's executed at each iteration
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, optimizer_idx):
         images, labels = batch
         num_places, num_images_per_place, C, H, W = images.shape
         images = images.view(num_places * num_images_per_place, C, H, W)
