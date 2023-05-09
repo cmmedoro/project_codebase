@@ -63,11 +63,11 @@ class MixVPR(nn.Module):
         x = self.row_proj(x)
         x = F.normalize(x.flatten(1), p=2, dim=-1)
         return x
-    
-def print_nb_params(m):
-    model_parameters = filter(lambda p: p.requires_grad, m.parameters())
-    params = sum([np.prod(p.size()) for p in model_parameters])
-    print(f'Trainable parameters: {params/1e6:.3}M')
+    """
+#def print_nb_params(m):
+ #   model_parameters = filter(lambda p: p.requires_grad, m.parameters())
+  #  params = sum([np.prod(p.size()) for p in model_parameters])
+   # print(f'Trainable parameters: {params/1e6:.3}M')
 
 
 def main():
@@ -86,4 +86,4 @@ def main():
     print(output.shape)
 
 if __name__ == '__main__':
-    main()
+    main()"""

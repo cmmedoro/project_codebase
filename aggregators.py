@@ -11,9 +11,9 @@ def get_aggregator(agg_arch, agg_config={}):
         return gem.GeM(**agg_config)
     
     elif 'mixvpr' in agg_arch.lower():
-        agg_config={'in_channels' : 1024,
-                'in_h' : 20,
-                'in_w' : 20,
+        agg_config={'in_channels' : 512,
+                'in_h' : 7,
+                'in_w' : 7,
                 'out_channels' : 1024,
                 'mix_depth' : 4,
                 'mlp_ratio' : 1,
