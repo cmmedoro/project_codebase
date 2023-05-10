@@ -120,6 +120,15 @@ class LightningModel(pl.LightningModule):
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
         
         self.log('loss', loss.item(), logger=True)
+
+        """if isinstance(self.optimizers, torch.optim.Optimizer):
+            optimizer = self.optimizers
+            optimizer.step()
+            optimizer.zero_grad()
+        else:
+            optimizer = self.optimizers[optimizer_idx]
+            optimizer.step()
+            optimizer.zero_grad()"""
         return {'loss': loss}
 
     # For validation and test, we iterate step by step over the validation set
