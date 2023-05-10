@@ -56,20 +56,12 @@ class MixVPR(nn.Module):
 
     def forward(self, x):
         x = x.flatten(2)
-        print("MixVPR:")
-        print(x.shape)
         x = self.mix(x)
-        print(x.shape)
         x = x.permute(0, 2, 1)
-        print(x.shape)
         x = self.channel_proj(x)
-        print(x.shape)
         x = x.permute(0, 2, 1)
-        print(x.shape)
         x = self.row_proj(x)
-        print(x.shape)
         x = F.normalize(x.flatten(1), p=2, dim=-1)
-        print(x.shape)
         return x
     """
 #def print_nb_params(m):

@@ -82,10 +82,7 @@ class LightningModel(pl.LightningModule):
 
     def forward(self, images):
         descriptors = self.backbone(images)
-        print("descriptors")
-        print(descriptors.shape)
         descriptors = self.aggregator(descriptors)
-        print(descriptors.shape)
         return descriptors
 
     def configure_optimizers(self):
