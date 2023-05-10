@@ -43,6 +43,7 @@ class LightningModel(pl.LightningModule):
         self.test_dataset = test_dataset
         self.num_preds_to_save = num_preds_to_save
         self.save_only_wrong_preds = save_only_wrong_preds
+        self.embedding_size = descriptors_dim
         #save loss name and miner name
         self.loss_name = loss_name
         self.miner_name = miner_name
@@ -71,8 +72,9 @@ class LightningModel(pl.LightningModule):
             )
         elif self.agg_arch == "mixvpr":
             self.aggregator = ag.get_aggregator(agg_arch, agg_config)
+            self.embedding_size = 4096
         # Set the loss function
-        self.loss_fn = lm.get_loss(loss_name, num_classes)#add num_classes -> idea: send not only the name of the loss you want
+        self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#add num_classes -> idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
         # Set the miner
         self.miner = lm.get_miner(miner_name)
