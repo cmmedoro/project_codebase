@@ -69,17 +69,17 @@ class MixVPR(nn.Module):
         #intermediate_output: (256, 49, 512)
         x = self.channel_proj(x)
         print(x.shape)
-        #intermediate_output: (256, 49, 1024)
+        #intermediate_output: (256, 49, 512)
         x = x.permute(0, 2, 1)
         print(x.shape)
-        #intermediate_output: (256, 1024, 49)
+        #intermediate_output: (256, 512, 49)
         x = self.row_proj(x)
         print(x.shape)
-        #intermediate_output: (256, 4096)
+        #intermediate_output: (256, 512, 4)
         x = F.normalize(x.flatten(1), p=2, dim=-1)
         print("Output")
         print(x.shape)
-        #output: (256, 4096)
+        #output: (256, 2048)
         return x
     """
 #def print_nb_params(m):
