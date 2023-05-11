@@ -53,7 +53,7 @@ class LightningModel(pl.LightningModule):
         self.agg_config = agg_config
         #save number of classes for the loss functions
         self.num_classes = num_classes
-        print(self.num_classes)
+        #print(self.num_classes)
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         # Save in_features of model.fc
@@ -62,6 +62,7 @@ class LightningModel(pl.LightningModule):
         self.layers = list(self.model.children())[:-2]
         # define backbone
         self.backbone = torch.nn.Sequential(*self.layers)
+        #the backbone outputs descriptors of dimension (num_batches = 256, 512, 7, 7)
         if self.agg_arch == "gem":
             self.aggregator = nn.Sequential(
                 ag.L2Norm(),
@@ -70,8 +71,10 @@ class LightningModel(pl.LightningModule):
                 nn.Linear(self.in_feats, descriptors_dim),
                 ag.L2Norm()
             )
+            #after: we are going to obtain an output of size (256, 512)
         elif self.agg_arch == "mixvpr":
             self.aggregator = ag.get_aggregator(agg_arch, agg_config)
+            #this will give an output of dimension 4096 ---> to use cosface and arcface we need to set embedding_size = 4096 instead of 512
             self.embedding_size = 4096
         # Set the loss function
         self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#add num_classes -> idea: send not only the name of the loss you want
@@ -82,7 +85,9 @@ class LightningModel(pl.LightningModule):
 
     def forward(self, images):
         descriptors = self.backbone(images)
+        #output: (256, 512, 7, 7)
         descriptors = self.aggregator(descriptors)
+        #output: (256, 512) if gem OR (256, 4096) if mixvpr
         return descriptors
 
     def configure_optimizers(self):

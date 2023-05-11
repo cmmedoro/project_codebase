@@ -55,13 +55,21 @@ class MixVPR(nn.Module):
         self.row_proj = nn.Linear(hw, out_rows) #(49, 4)
 
     def forward(self, x):
+        #Input: (num_batches, 512, 7, 7)
         x = x.flatten(2)
+        #intermediate_output: (256, 512, 49)
         x = self.mix(x)
-        x = x.permute(0, 2, 1)
+        #intermediate_output: (256, 512, 49)
+        x = x.permute(0, 2, 1) #permute dimensions, invert second and third dimension
+        #intermediate_output: (256, 49, 512)
         x = self.channel_proj(x)
+        #intermediate_output: (256, 49, 1024)
         x = x.permute(0, 2, 1)
+        #intermediate_output: (256, 1024, 49)
         x = self.row_proj(x)
+        #intermediate_output: (256, 4096)
         x = F.normalize(x.flatten(1), p=2, dim=-1)
+        #output: (256, 4096)
         return x
     """
 #def print_nb_params(m):
