@@ -56,29 +56,19 @@ class MixVPR(nn.Module):
 
     def forward(self, x):
         #Input: (num_batches, 512, 7, 7)
-        print("Input")
-        print(x.shape)
         x = x.flatten(2)
-        print(x.shape)
         #intermediate_output: (256, 512, 49)
         x = self.mix(x)
-        print(x.shape)
         #intermediate_output: (256, 512, 49)
         x = x.permute(0, 2, 1) #permute dimensions, invert second and third dimension
-        print(x.shape)
         #intermediate_output: (256, 49, 512)
         x = self.channel_proj(x)
-        print(x.shape)
         #intermediate_output: (256, 49, 512)
         x = x.permute(0, 2, 1)
-        print(x.shape)
         #intermediate_output: (256, 512, 49)
         x = self.row_proj(x)
-        print(x.shape)
         #intermediate_output: (256, 512, 4)
         x = F.normalize(x.flatten(1), p=2, dim=-1)
-        print("Output")
-        print(x.shape)
         #output: (256, 2048)
         return x
     """

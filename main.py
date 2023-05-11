@@ -87,7 +87,7 @@ class LightningModel(pl.LightningModule):
         descriptors = self.backbone(images)
         #output: (256, 512, 7, 7)
         descriptors = self.aggregator(descriptors)
-        #output: (256, 512) if gem OR (256, 4096) if mixvpr
+        #output: (256, 512) if gem OR (256, 2048) if mixvpr
         return descriptors
 
     def configure_optimizers(self):
