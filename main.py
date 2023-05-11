@@ -57,7 +57,7 @@ class LightningModel(pl.LightningModule):
             #after: we are going to obtain an output of size (256, 512)
         elif self.agg_arch == "mixvpr":
             self.aggregator = ag.get_aggregator(agg_arch, agg_config)
-            #this will give an output of dimension 4096 ---> to use cosface and arcface we need to set embedding_size = 4096 instead of 512
+            #this will give an output of dimension 2048 ---> to use cosface and arcface we need to set embedding_size = 4096 instead of 512
             self.embedding_size = 2048
         # Set the loss function
         self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#add num_classes -> idea: send not only the name of the loss you want
