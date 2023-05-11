@@ -1,5 +1,4 @@
 import numpy as np
-import main as gem
 import torch
 import torch.nn.functional as F
 import self_modules as sm
@@ -8,7 +7,7 @@ def get_aggregator(agg_arch, agg_config={}):
 
     if 'gem' in agg_arch.lower():
         agg_config={'p': 3}
-        return gem.GeM(**agg_config)
+        return sm.GeM(**agg_config)
     
     elif 'mixvpr' in agg_arch.lower():
         agg_config={'in_channels' : 512,
