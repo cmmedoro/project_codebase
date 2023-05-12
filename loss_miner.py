@@ -23,7 +23,7 @@ def get_miner(miner_name):
     if miner_name == "triplet_margin":
         miner = miners.TripletMarginMiner()
     if miner_name == "multisimilarity":
-        miner = miners.TripletMarginMiner()
+        miner = miners.MultiSimilarityMiner()
     if miner_name == "batch_hard":
         miner = miners.BatchHardMiner()
     return miner
