@@ -47,6 +47,8 @@ def parse_arguments():
     #                    help="path to checkpoint")
     parser.add_argument("--ckpt_path", type=str, default=None,
                         help="path to checkpoint")
+    parser.add_argument("--only_test", type = bool, default = False,
+                        help = "Insert boolean if you want to perform only test (True) or not (False)")
 
     args = parser.parse_args()
     return args

@@ -36,6 +36,8 @@ class LightningModel(pl.LightningModule):
         self.agg_config = agg_config
         #save number of classes for the loss functions
         self.num_classes = num_classes
+        #save embedding_size
+        self.embedding_size = descriptors_dim
         #print(self.num_classes)
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
@@ -56,9 +58,11 @@ class LightningModel(pl.LightningModule):
             )
             #after: we are going to obtain an output of size (256, 512)
         elif self.agg_arch == "mixvpr":
-            self.aggregator = ag.get_aggregator(agg_arch, agg_config)
-            #this will give an output of dimension 2048 ---> to use cosface and arcface we need to set embedding_size = 4096 instead of 512
-            self.embedding_size = 2048
+            self.aggregator = nn.Sequential(
+                ag.get_aggregator(agg_arch, agg_config),
+                nn.Linear(2048, descriptors_dim)
+            )
+            #self.aggregator = ag.get_aggregator(agg_arch, agg_config)
         # Set the loss function
         self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#add num_classes -> idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
@@ -204,8 +208,15 @@ if __name__ == '__main__':
         log_every_n_steps=20,
     )
 
-    if(args.ckpt_path == None):
+    """if(args.ckpt_path == None):
         trainer.validate(model=model, dataloaders=val_loader)
         trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
     trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)
+    """
 
+    if(args.only_test == False):
+        trainer.validate(model=model, dataloaders=val_loader, ckpt_path = args.ckpt_path)
+        trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path = args.ckpt_path)
+        trainer.test(model = model, dataloaders=test_loader)
+    else:
+        trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)

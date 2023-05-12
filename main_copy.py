@@ -77,6 +77,8 @@ class LightningModel(pl.LightningModule):
                                             # but also the num_classes in case it is CosFace or ArcFace
         # Set the miner
         self.miner = lm.get_miner(miner_name)
+        #add a fc layer at the end
+        
 
     def forward(self, images):
         descriptors = self.backbone(images)
@@ -205,8 +207,15 @@ if __name__ == '__main__':
         log_every_n_steps=20,
     )
 
-    if(args.ckpt_path == None):
-        trainer.validate(model=model, dataloaders=val_loader)
-        trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)
+    #if(args.ckpt_path == None):
+     #   trainer.validate(model=model, dataloaders=val_loader)
+      #  trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    #trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)
+
+    if(args.only_test == False):
+        trainer.validate(model=model, dataloaders=val_loader, ckpt_path = args.ckpt_path)
+        trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path = args.ckpt_path)
+        trainer.test(model = model, dataloaders=test_loader)
+    else:
+        trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)
 
