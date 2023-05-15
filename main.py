@@ -71,7 +71,7 @@ class ProxySampler(Sampler):
         #Take the bank you have defined at the end of the previous epoch(in inference epoch end)
         #compute the final averages and instantiate the index
         global bank
-        bank.computeavg()
+        #bank.computeavg()
         seed = int(torch.empty((), dtype=torch.int64).random_().item())
         self.generator = torch.Generator()
         self.generator.manual_seed(seed)
@@ -83,6 +83,7 @@ class ProxySampler(Sampler):
                 yield from torch.randperm(self.batch_size, generator=self.generator).tolist()
             yield from torch.randperm(self.batch_size, generator=self.generator).tolist()[:len(self.dataset) % self.batch_size]
         else:
+            bank.computeavg()
             self.proxies= Proxies(bank)
             batches=[]
             while bank.__len__()>self.batch_size:
