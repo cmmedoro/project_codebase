@@ -107,6 +107,7 @@ class ProxySampler(Sampler):
 
 class ProxyHead(nn.Module):
     def __init__(self, in_channels=512, out_channels=256,):
+        super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.dimred= nn.Linear(in_channels, out_channels)  #(512, 256)
