@@ -68,6 +68,7 @@ class ProxySampler(Sampler):
     def __init__(self, dataset, batch_size, generator=None):
         self.dataset = dataset
         self.batch_size = batch_size
+        self.length = len(self.dataset)//self.batch_size 
         self.generator = generator
         #Take the bank you have defined at the end of the previous epoch(in inference epoch end)
         #compute the final averages and instantiate the index
@@ -95,7 +96,7 @@ class ProxySampler(Sampler):
                 bank.remove_places(indexes)
                 self.proxies.remove_places(indexes)
                 batches.append(indexes.tolist())
-            batches.append(bank.getkeys())    
+            batches.append(bank.getkeys())  
             return iter(batches)
         """Sampler usedas model:
         combined = list(first_half_batches + second_half_batches)
@@ -104,7 +105,7 @@ class ProxySampler(Sampler):
         return iter(combined)"""
             
     def __len__(self):
-        return self._len
+        return self.length
 
 class ProxyHead(nn.Module):
     def __init__(self, in_channels=512, out_channels=256,):
