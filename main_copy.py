@@ -36,7 +36,7 @@ class ProxySamplerVersione2(Sampler):
         #compute the final averages and instantiate the index
         global bank
         bank.computeavg()
-        self.proxies= Proxies(bank)
+        #self.proxies= Proxies(bank)
         seed = int(torch.empty((), dtype=torch.int64).random_().item())
         self.generator = torch.Generator()
         self.generator.manual_seed(seed)
@@ -68,10 +68,10 @@ class ProxySampler(Sampler):
         self.batch_size = batch_size
         self.length = len(self.dataset)//self.batch_size 
         self.generator = generator
+        self.bank=bank
         self.first_epoch = 0
         #Take the bank you have defined at the end of the previous epoch(in inference epoch end)
         #compute the final averages and instantiate the index
-        global bank
         #bank.computeavg()
         seed = int(torch.empty((), dtype=torch.int64).random_().item())
         self.generator = torch.Generator()
@@ -80,13 +80,19 @@ class ProxySampler(Sampler):
     def __iter__(self):
         if self.first_epoch==0:
             self.first_epoch=1
-            for _ in range( len(self.dataset)// self.batch_size):
-                yield from torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
-            #yield from torch.randperm(self.batch_size, generator=self.generator).tolist()[:len(self.dataset) % self.batch_size]
+            batches=[]
+            index_bank=list(range(len(self.dataset)))
+            while len(index_bank)>self.batch_size:
+                indexes=random.sample(index_bank, self.batch_size)
+                batches.append(indexes)
+                for el in indexes:
+                    index_bank.pop(el)
+                #batches.append(torch.randperm(self.batch_size, generator=self.generator).tolist())
+            batches.append(indexes)
         else:
             print("Casini nel random evitati")
             bank.computeavg()
-            self.proxies= Proxies(bank)
+            self.bank.update_index()
             batches=[]
             while bank.__len__()>self.batch_size:
                 randint = random.choice(bank.getkeys())
@@ -97,6 +103,7 @@ class ProxySampler(Sampler):
                 self.proxies.remove_places(indexes)
                 batches.append(indexes.tolist())
             batches.append(bank.getkeys())  
+            self.bank.reset()
             return iter(batches)
         """Sampler usedas model:
         combined = list(first_half_batches + second_half_batches)
@@ -127,8 +134,11 @@ class ProxyHead(nn.Module):
 class ProxyBank():
     #E' un dizionario in cui ad ogni chiave, indice di un luogo, viene associato il tensore che sarà il rappresentante compatto di quel luogo,
     # ottenuto come media delle feature map ottenute da immagini di quel luogo, opportunamente ridimensionate
-    def __init__(self):
+    def __init__(self, descriptor_dimension):
+        self.dim=descriptor_dimension
         self.proxybank= {}
+        support_index = faiss.IndexFlatL2(self.dim)
+        self.proxy_faiss_index = faiss.IndexIDMap(support_index)
 
     def adddata(self, compact_descriptors, labels):
         #ad ogni batch della rete neurale dobbiamo aggiungere i nuovi descrittori
@@ -144,6 +154,20 @@ class ProxyBank():
         #finita una epoch calcoliamo i rappresentanti compatti di ogni luogo
         for el in self.proxybank.values():
             el[0]=el[0]/el[1]
+
+    def update_index(self):
+        self.places=list(self.proxybank.keys())#dopo inizializzazione non viene più modificato
+        self.proxies=np.array([self.proxybank[key][0].numpy().astype(np.float32) for key in self.places])
+        self.proxy_faiss_index.add_with_ids(self.proxies, self.places)
+    
+    def getproxies(self, rand_index, batch_size):
+        _,indexes =self.proxy_faiss_index.search(self.proxybank[rand_index][0].unsqueeze(0), batch_size)       
+        return indexes[0]
+
+    def reset(self):
+      self.proxybank= {}
+      support_index = faiss.IndexFlatL2(self.dim)
+      self.proxy_faiss_index = faiss.IndexIDMap(support_index)
     
     def getdict(self):
         return self.proxybank
@@ -154,6 +178,7 @@ class ProxyBank():
     def remove_places(self, list_index):
       for el in list_index:
         self.proxybank.pop(el)
+        self.proxy_faiss_index.remove_ids(list_index)
 
     #Da qui in giù le cose non ervono più ma le ho fatte e le lascio
     def __getitem__(self, key):
@@ -161,35 +186,8 @@ class ProxyBank():
     def __len__(self):
         return len(self.proxybank)
 
-class Proxies():
-    #indicizziamo i rappresentanto compatti ottenut in proxyhead ai fini di poterli più facilmente confrontare tramite knn
-    def __init__(self, proxybank):
-        self.proxybank=proxybank.__getdict__()#dopo inizializzazione non viene più modificato
-        self.places=proxybank.__getkeys__()#dopo inizializzazione non viene più modificato
-        self.proxies=np.array([self.proxybank[key][0].numpy().astype(np.float32) for key in self.places])#dopo inizializzazione non viene più modificato
-        support_index = faiss.IndexFlatL2(self.proxies.shape[1])
-        self.proxy_faiss_index = faiss.IndexIDMap(support_index)
-        self.proxy_faiss_index.add_with_ids(self.proxies, self.places)
-        
-    def getproxies(self, rand_index, batch_size):
-        _,indexes =self.proxy_faiss_index.search(self.proxybank[rand_index][0].unsqueeze(0), batch_size)       
-        return indexes[0]
-
-    def remove_places(self, list_index):
-        self.proxy_faiss_index.remove_ids(list_index)
-    
-    #questi due metodi si potrebbero togliere:
-    #e si potrebbe togliere il "self" da proxies, proxybank e places, che di fatto vengono usati solo per inizializzare bene l'indice
-    def __getself__(self):
-        return self.proxies#occhio che non viene modificato quando rimuovo dei vettori dall'indice
-
-    def __len__(self):
-        return len(self.proxybank)
-   
-
-
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD", agg_arch='gem', agg_config={}):
+    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD", agg_arch='gem', agg_config={}, bank=None):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -217,6 +215,8 @@ class LightningModel(pl.LightningModule):
         self.layers = list(self.model.children())[:-2]
         # define backbone
         self.backbone = torch.nn.Sequential(*self.layers)
+        # define the bank
+        self.bank = bank
         if self.agg_arch == "gem":
             self.aggregator = nn.Sequential(
                 ag.L2Norm(),
@@ -242,10 +242,10 @@ class LightningModel(pl.LightningModule):
         descriptors1 = self.aggregator(descriptors)
         descriptors2 = self.proxyhead(descriptors1)#la proxyhead va applicata dopo l'aggregator, per un'ulteriore 
         #dimensionality reduction
-        print("Descriptors shape (output of aggregator)")
-        print(descriptors1.shape)
-        print("Output proxy")
-        print(descriptors2.shape)
+        #print("Descriptors shape (output of aggregator)")
+        #print(descriptors1.shape)
+        #print("Output proxy")
+        #print(descriptors2.shape)
         return descriptors1, descriptors2
 
     def configure_optimizers(self):
@@ -284,8 +284,8 @@ class LightningModel(pl.LightningModule):
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
         #at each training iterations the compact descriptors obtained by the forward method 
         # after passing through the proxyhead are added to the bank
-        global bank
-        bank.adddata(compact,labels)
+        
+        self.bank.adddata(compact,labels)
         
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
@@ -322,10 +322,9 @@ class LightningModel(pl.LightningModule):
         self.log('R@1', recalls[0], prog_bar=False, logger=True)
         self.log('R@5', recalls[1], prog_bar=False, logger=True)
         #Alla fine di ogni epoch (quando questo metodo viene chiamato), inizializzo la nuova banca
-        global bank
-        bank=ProxyBank()
+        
 
-def get_datasets_and_dataloaders(args):
+def get_datasets_and_dataloaders(args, bank):
     train_transform = tfm.Compose([
         tfm.RandAugment(num_ops=3),
         tfm.ToTensor(),
@@ -340,7 +339,7 @@ def get_datasets_and_dataloaders(args):
     val_dataset = TestDataset(dataset_folder=args.val_path)
     test_dataset = TestDataset(dataset_folder=args.test_path)
     #train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
-    train_loader = DataLoader(dataset=train_dataset, num_workers=args.num_workers, batch_sampler = ProxySampler(train_dataset, args.batch_size))#BatchSampler=ProxySamplerVersione2)
+    train_loader = DataLoader(dataset=train_dataset, num_workers=args.num_workers, batch_sampler = ProxySampler(train_dataset, args.batch_size, bank))#BatchSampler=ProxySamplerVersione2)
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader
@@ -349,9 +348,10 @@ def get_datasets_and_dataloaders(args):
 if __name__ == '__main__':
     args = parser1.parse_arguments()
 
-    train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args)
+    bank = ProxyBank(args.descriptors_dim)
+    train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args, bank)
     num_classes = train_dataset.__len__()
-    model = LightningModel(val_dataset, test_dataset, num_classes, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer, args.aggr)
+    model = LightningModel(val_dataset, test_dataset, num_classes, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer, args.aggr, bank = bank)
     
     # Model params saving using Pytorch Lightning. Save the best 3 models according to Recall@1
     checkpoint_cb = ModelCheckpoint(
