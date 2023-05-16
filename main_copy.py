@@ -205,6 +205,7 @@ class LightningModel(pl.LightningModule):
         # Save the aggregator name
         self.agg_arch = agg_arch
         self.agg_config = agg_config
+        self.embedding_size = descriptors_dim
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         #create the proxy head
@@ -229,7 +230,7 @@ class LightningModel(pl.LightningModule):
                 nn.Linear(2048, descriptors_dim)
             )
         # Set the loss function
-        self.loss_fn = lm.get_loss(loss_name, self.num_classes)#idea: send not only the name of the loss you want
+        self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
         # Set the miner
         self.miner = lm.get_miner(miner_name)
