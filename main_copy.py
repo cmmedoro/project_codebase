@@ -239,7 +239,9 @@ class LightningModel(pl.LightningModule):
         descriptors = self.backbone(images)
         descriptors1 = self.aggregator(descriptors)
         descriptors2 = self.proxyhead(descriptors1)#la proxyhead va applicata dopo l'aggregator, per un'ulteriore 
-        #dimensionality reduction,
+        #dimensionality reduction
+        print(descriptors1.size())
+        print(descriptors2.size())
         return descriptors1, descriptors2
 
     def configure_optimizers(self):
@@ -254,7 +256,7 @@ class LightningModel(pl.LightningModule):
         if self.loss_name == "cosface" or self.loss_name == "arcface":
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
             return [optimizers, self.loss_optimizer]
-        return [optimizers]
+        return optimizers
 
 
     #  The loss function call (this method will be called at each training iteration)
