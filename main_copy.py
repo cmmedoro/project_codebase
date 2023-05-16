@@ -240,8 +240,8 @@ class LightningModel(pl.LightningModule):
         descriptors1 = self.aggregator(descriptors)
         descriptors2 = self.proxyhead(descriptors1)#la proxyhead va applicata dopo l'aggregator, per un'ulteriore 
         #dimensionality reduction
-        print(descriptors1.size())
-        print(descriptors2.size())
+        print(descriptors1.shape)
+        print(descriptors2.shape)
         return descriptors1, descriptors2
 
     def configure_optimizers(self):
