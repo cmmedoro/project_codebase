@@ -81,8 +81,8 @@ class ProxySampler(Sampler):
         if self.first_epoch==0:
             self.first_epoch=1
             for _ in range( len(self.dataset)// self.batch_size):
-                yield from torch.randperm(self.batch_size, generator=self.generator).tolist()
-            yield from torch.randperm(self.batch_size, generator=self.generator).tolist()[:len(self.dataset) % self.batch_size]
+                yield from torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
+            #yield from torch.randperm(self.batch_size, generator=self.generator).tolist()[:len(self.dataset) % self.batch_size]
         else:
             print("Casini nel random evitati")
             bank.computeavg()
