@@ -89,6 +89,7 @@ class ProxySampler(Sampler):
                 #    index_bank.pop(el)
                 #batches.append(torch.randperm(self.batch_size, generator=self.generator).tolist())
             batches.append(indexes)
+            return iter(batches)
         else:
             print("Casini nel random evitati")
             bank.computeavg()
