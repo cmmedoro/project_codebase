@@ -161,7 +161,9 @@ class ProxyBank():
 
     def update_index(self):
         self.places=list(self.proxybank.keys())#dopo inizializzazione non viene più modificato
+        print(self.places.shape)
         self.proxies=np.array([self.proxybank[key][0].numpy().astype(np.float32).unsqueeze(0) for key in self.places])
+        print(self.proxies.shape)
         self.proxy_faiss_index.add_with_ids(self.proxies, self.places)
     
     def getproxies(self, rand_index, batch_size):
