@@ -27,14 +27,14 @@ class LightningModel(pl.LightningModule):
         self.num_preds_to_save = num_preds_to_save
         self.save_only_wrong_preds = save_only_wrong_preds
         self.embedding_size = descriptors_dim
-        #save loss name and miner name
+        #save loss name, miner name and optimizer name
         self.loss_name = loss_name
         self.miner_name = miner_name
         self.opt_name = opt_name
-        # Save the aggregator name
+        # Save the aggregator name and configurations
         self.agg_arch = agg_arch
         self.agg_config = agg_config
-        #save number of classes for the loss functions
+        #save number of classes for the loss functions (Cosface and Arcface)
         self.num_classes = num_classes
         #save embedding_size
         self.embedding_size = descriptors_dim
@@ -60,12 +60,14 @@ class LightningModel(pl.LightningModule):
         elif self.agg_arch == "mixvpr":
             self.aggregator = nn.Sequential(
                 ag.get_aggregator(agg_arch, agg_config),
+                #MixVpr output is (256, 2048). We apply a final fully connected (as in original structure of ResNet-18), considering
+                # as input features size 2048, and output features stays the same (512)
                 nn.Linear(2048, descriptors_dim)
             )
             #self.aggregator = ag.get_aggregator(agg_arch, agg_config)
         # Set the loss function
-        self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#add num_classes -> idea: send not only the name of the loss you want
-                                            # but also the num_classes in case it is CosFace or ArcFace
+        self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#add num_classes and embedding_size
+        #-> idea: send not only the name of the loss you want but also the num_classes and embedding_size in case it is CosFace or ArcFace
         # Set the miner
         self.miner = lm.get_miner(miner_name)
 
