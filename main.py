@@ -35,10 +35,9 @@ class LightningModel(pl.LightningModule):
         self.agg_arch = agg_arch
         self.agg_config = agg_config
         #save number of classes for the loss functions (Cosface and Arcface)
-        self.num_classes = num_classes
+        self.num_classes = num_classes #in this case: 62514
         #save embedding_size
         self.embedding_size = descriptors_dim
-        #print(self.num_classes)
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
         # Save in_features of model.fc
@@ -50,13 +49,17 @@ class LightningModel(pl.LightningModule):
         #the backbone outputs descriptors of dimension (num_batches = 256, 512, 7, 7)
         if self.agg_arch == "gem":
             self.aggregator = nn.Sequential(
+                #performs L2 normalization; doesn't change dimensions 
                 ag.L2Norm(),
+                #call the gem aggregator: output of size (num_batches, 512, 7, 7)
                 ag.get_aggregator(agg_arch, agg_config),
+                #flatten the previous output so that we get dim (num_batches, 512)
                 ag.Flatten(),
+                #apply linear layer as last fc of Resnet-18: output of size (num_batches = 256, 512)
                 nn.Linear(self.in_feats, descriptors_dim),
+                #L2 normalization
                 ag.L2Norm()
             )
-            #after: we are going to obtain an output of size (256, 512)
         elif self.agg_arch == "mixvpr":
             self.aggregator = nn.Sequential(
                 ag.get_aggregator(agg_arch, agg_config),
@@ -64,7 +67,6 @@ class LightningModel(pl.LightningModule):
                 # as input features size 2048, and output features stays the same (512)
                 nn.Linear(2048, descriptors_dim)
             )
-            #self.aggregator = ag.get_aggregator(agg_arch, agg_config)
         # Set the loss function
         self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#add num_classes and embedding_size
         #-> idea: send not only the name of the loss you want but also the num_classes and embedding_size in case it is CosFace or ArcFace

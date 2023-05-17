@@ -63,20 +63,17 @@ class ProxySamplerVersione2(Sampler):
     
 
 class ProxySampler(Sampler):
-
-
     def __init__(self, dataset, batch_size, bank, generator=None):
         self.dataset = dataset
         self.batch_size = batch_size
         self.length = len(self.dataset)//self.batch_size 
         self.generator = generator
-        self.bank=bank
+        self.bank = bank
         self.first_epoch = 0
-        #Take the bank you have defined at the end of the previous epoch(in inference epoch end)
+        #Take the bank you have defined at the end of the previous epoch (in inference epoch end)
         #compute the final averages and instantiate the index
-        #bank.computeavg()
         seed = int(torch.empty((), dtype=torch.int64).random_().item())
-        self.generator = torch.Generator()
+        self.generator = torch.Generator() # to produce pseudo random numbers
         self.generator.manual_seed(seed)
         
     def __iter__(self):
@@ -92,24 +89,27 @@ class ProxySampler(Sampler):
                 #    index_bank.pop(el)
                 #batches.append(torch.randperm(self.batch_size, generator=self.generator).tolist())
             batches.append(indexes)"""
-            batches=torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
+            # torch.randperm(n) returns a random permutation of numbers from 0 to n-1
+            # generator = pseudo-random number generator for sampling
+            # numbers from 0 to len(dataset) ---> split the returned list into a number of sublists = batch_size
+            batches = torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
             return iter(batches)
         else:
             print("Casini nel random evitati")
             self.bank.computeavg()
             self.bank.update_index()
             batches=[]
-            while self.bank.__len__()>self.batch_size:
-                randint = random.choice(self.bank.getkeys())
-                #take neareast neighbors of the random place as selected places for the new batch
-                #then remove selected places both from bank and from index
-                indexes= self.bank.getproxies(rand_index=randint, batch_size=self.batch_size)
+            while self.bank.__len__() > self.batch_size:
+                randint = random.choice(self.bank.getkeys()) # selects randomly an element among the keys (places) of the bank
+                # take neareast neighbors of the random place as selected places for the new batch
+                indexes = self.bank.getproxies(rand_index=randint, batch_size=self.batch_size)
+                # then remove selected places both from bank and from index
                 self.bank.remove_places(indexes)
                 batches.append(indexes.tolist())
             batches.append(self.bank.getkeys())  
             self.bank.reset()
             return iter(batches)
-        """Sampler usedas model:
+        """Sampler used as model:
         combined = list(first_half_batches + second_half_batches)
         combined = [batch.tolist() for batch in combined]
         random.shuffle(combined)
@@ -123,55 +123,76 @@ class ProxyHead(nn.Module):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        self.dimred= nn.Linear(in_channels, out_channels)  #(512, 256)
+        #define a dimensionality reduction operation considering (512, 256)
+        self.dimred= nn.Linear(in_channels, out_channels) 
         self.norm=ag.L2Norm()#Ragionare bene su quale dimensione devo andare ad agire
         #di default la dimensione è la 1
         #dovrei ricevere in input qualcosa che ha come dimensione[0] 256 (le immagini di un batch)
         #e come dimensione[1] 512, ovvero descriptors_dim
 
     def forward(self, x):
-        x = self.dimred(x)#dimensionality reduction
+        #apply dimensionality reduction
+        x = self.dimred(x)
+        #apply normalization
         x = self.norm(x)
         return x
     
 
 class ProxyBank():
-    #E' un dizionario in cui ad ogni chiave, indice di un luogo, viene associato il tensore che sarà il rappresentante compatto di quel luogo,
-    # ottenuto come media delle feature map ottenute da immagini di quel luogo, opportunamente ridimensionate
+    # Dictionary: to each k (place index) we associate a tensor as the compact descriptor of that place, obtained as the mean of the
+    # feature maps obtained from images of that place, rescaled
     def __init__(self, descriptor_dimension):
-        self.dim=descriptor_dimension
-        self.proxybank= {}
+        self.dim = descriptor_dimension
+        # initialize the proxy bank as an empty dictionary
+        self.proxybank = {}
+        # define IndexFlatL2: measures the L2 distance between all given points of the query vector
+        # and the vectors loaded into the index
+        # initialize the index with the vector dimensionality = descriptors_dim
         support_index = faiss.IndexFlatL2(self.dim)
+        # in order to be able to translate ids when mapping and searching we need to use IndexIDMap to encapsulate the previously 
+        # created index ---> needed because faiss proposes sequential ids, instead we would want to specify our own ids.
         self.proxy_faiss_index = faiss.IndexIDMap(support_index)
 
     def adddata(self, compact_descriptors, labels):
-        #ad ogni batch della rete neurale dobbiamo aggiungere i nuovi descrittori
+        # at each batch of the neural network we need to add the new descriptors
         for compact_descriptor, label in zip(compact_descriptors, labels):
-            label=int(label)
-            if label in self.proxybank.keys():
-                self.proxybank[label][0]+=compact_descriptor
-                self.proxybank[label][1]+=1
+            label = int(label)
+            if label in self.proxybank.keys(): #if the label is already among the keys of the proxy bank, I just need to update the values
+                self.proxybank[label][0] += compact_descriptor
+                self.proxybank[label][1] += 1
             else: 
+                # create a new entry of the kind [compact_descriptor, counter_to_increment] for the new label
                 self.proxybank[label]=[compact_descriptor,1]
     
     def computeavg(self):
-        #finita una epoch calcoliamo i rappresentanti compatti di ogni luogo
+        # at the end of each epoch we need to compute the compact descriptors for each place
         for el in self.proxybank.values():
-            el[0]=el[0]/el[1]
+            # el[0] ---> compact_descriptor
+            # el[1] ---> counter with number of descriptors for that label
+            el[0] = el[0]/el[1]
+        # this method doesn't return anything ---> either you create a parameter for the bank and update it as such, 
+        # or you need to return something
+        # OR is it so intelligent that it understands it needs to update the values of the proxy bank with the avg_descriptors???
 
     def update_index(self):
-        self.places=list(self.proxybank.keys())#dopo inizializzazione non viene più modificato
+        # save the places as the list of the keys of the proxy bank
+        self.places = list(self.proxybank.keys()) # after initialization it is not modified
         print(len(self.places))
-        self.proxies=np.array([self.proxybank[key][0].numpy().astype(np.float32) for key in self.places])#.unsqueeze(0)
+        # define the proxies ---> for each place in self.places, consider the compact descriptor in the bank corresponding to
+        # that place. Create an array
+        self.proxies = np.array([self.proxybank[key][0].numpy().astype(np.float32) for key in self.places])#.unsqueeze(0)
         print(self.proxies.shape)
+        # add the proxies and the places (labels) to the index
         self.proxy_faiss_index.add_with_ids(self.proxies, self.places)
     
     def getproxies(self, rand_index, batch_size):
-        _,indexes =self.proxy_faiss_index.search(self.proxybank[rand_index][0].unsqueeze(0), batch_size)       
+        # Here you want to get the k = batch_size closest descriptors to the one corresponding to the rand_index
+        _, indexes = self.proxy_faiss_index.search(self.proxybank[rand_index][0].unsqueeze(0), batch_size)       
         return indexes[0]
 
     def reset(self):
-      self.proxybank= {}
+      # reset the values for the bank as in __init__()
+      self.proxybank = {}
       support_index = faiss.IndexFlatL2(self.dim)
       self.proxy_faiss_index = faiss.IndexIDMap(support_index)
     
@@ -182,13 +203,14 @@ class ProxyBank():
         return list(self.proxybank.keys())
     
     def remove_places(self, list_index):
+      # remove elements from the proxy bank and from the index
       for el in list_index:
         self.proxybank.pop(el)
         self.proxy_faiss_index.remove_ids(list_index)
 
-    #Da qui in giù le cose non ervono più ma le ho fatte e le lascio
     def __getitem__(self, key):
         return self.proxybank[key][0]
+    
     def __len__(self):
         return len(self.proxybank)
 
@@ -197,13 +219,13 @@ class LightningModel(pl.LightningModule):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
-        #add num_classes
+        # add num_classes
         self.num_classes = num_classes
         print(num_classes)
         print(self.num_classes)
         self.num_preds_to_save = num_preds_to_save
         self.save_only_wrong_preds = save_only_wrong_preds
-        #save loss name and miner name
+        # save loss name and miner name
         self.loss_name = loss_name
         self.miner_name = miner_name
         self.opt_name = opt_name
@@ -213,8 +235,8 @@ class LightningModel(pl.LightningModule):
         self.embedding_size = descriptors_dim
         # Use a pretrained model
         self.model = torchvision.models.resnet18(weights=torchvision.models.ResNet18_Weights.DEFAULT)
-        #create the proxy head
-        self.proxyhead=ProxyHead()
+        # create the proxy head
+        self.proxyhead = ProxyHead()
         # Save in_features of model.fc
         self.in_feats = self.model.fc.in_features
         # eliminate last two layers
@@ -223,6 +245,7 @@ class LightningModel(pl.LightningModule):
         self.backbone = torch.nn.Sequential(*self.layers)
         # define the bank
         self.bank = bank
+        # define the aggregator
         if self.agg_arch == "gem":
             self.aggregator = nn.Sequential(
                 ag.L2Norm(),
@@ -246,8 +269,8 @@ class LightningModel(pl.LightningModule):
     def forward(self, images):
         descriptors = self.backbone(images)
         descriptors1 = self.aggregator(descriptors)
-        descriptors2 = self.proxyhead(descriptors1)#la proxyhead va applicata dopo l'aggregator, per un'ulteriore 
-        #dimensionality reduction
+        #apply the proxyhead to obtain a new dimensionality reduction
+        descriptors2 = self.proxyhead(descriptors1)
         #print("Descriptors shape (output of aggregator)")
         #print(descriptors1.shape)
         #print("Output proxy")
@@ -288,10 +311,10 @@ class LightningModel(pl.LightningModule):
         # Feed forward the batch to the model
         descriptors, compact = self(images)  # Here we are calling the method forward that we defined above
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
-        #at each training iterations the compact descriptors obtained by the forward method 
-        # after passing through the proxyhead are added to the bank
-        
-        self.bank.adddata(compact,labels)
+
+        #at each training iterations the compact descriptors obtained by the forward method after passing through the proxyhead 
+        #are added to the bank
+        self.bank.adddata(compact, labels)
         
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
@@ -299,7 +322,7 @@ class LightningModel(pl.LightningModule):
     # For validation and test, we iterate step by step over the validation set
     def inference_step(self, batch):
         images, _ = batch
-        descriptors, _ = self(images)
+        descriptors, _ = self(images) #apply the model to the images to obtain the descriptors
         return descriptors.cpu().numpy().astype(np.float32)
 
     def validation_step(self, batch, batch_idx):
@@ -327,7 +350,6 @@ class LightningModel(pl.LightningModule):
         print(recalls_str)
         self.log('R@1', recalls[0], prog_bar=False, logger=True)
         self.log('R@5', recalls[1], prog_bar=False, logger=True)
-        #Alla fine di ogni epoch (quando questo metodo viene chiamato), inizializzo la nuova banca
         
 
 def get_datasets_and_dataloaders(args, bank):
@@ -354,6 +376,7 @@ def get_datasets_and_dataloaders(args, bank):
 if __name__ == '__main__':
     args = parser1.parse_arguments()
 
+    # define the ProxyBank
     bank = ProxyBank(args.descriptors_dim)
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args, bank)
     num_classes = train_dataset.__len__()
