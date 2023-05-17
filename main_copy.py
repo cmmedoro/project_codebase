@@ -96,18 +96,17 @@ class ProxySampler(Sampler):
             return iter(batches)
         else:
             print("Casini nel random evitati")
-            bank.computeavg()
+            self.bank.computeavg()
             self.bank.update_index()
             batches=[]
-            while bank.__len__()>self.batch_size:
-                randint = random.choice(bank.getkeys())
+            while self.bank.__len__()>self.batch_size:
+                randint = random.choice(self.bank.getkeys())
                 #take neareast neighbors of the random place as selected places for the new batch
                 #then remove selected places both from bank and from index
-                indexes= self.proxies.getproxies(rand_index=randint, batch_size=self.batch_size)
-                bank.remove_places(indexes)
-                self.proxies.remove_places(indexes)
+                indexes= self.bank.getproxies(rand_index=randint, batch_size=self.batch_size)
+                self.bank.remove_places(indexes)
                 batches.append(indexes.tolist())
-            batches.append(bank.getkeys())  
+            batches.append(self.bank.getkeys())  
             self.bank.reset()
             return iter(batches)
         """Sampler usedas model:
@@ -162,7 +161,7 @@ class ProxyBank():
 
     def update_index(self):
         self.places=list(self.proxybank.keys())#dopo inizializzazione non viene più modificato
-        self.proxies=np.array([self.proxybank[key][0].numpy().astype(np.float32) for key in self.places])
+        self.proxies=np.array([self.proxybank[key][0].numpy().astype(np.float32).unsqueeze(0) for key in self.places])
         self.proxy_faiss_index.add_with_ids(self.proxies, self.places)
     
     def getproxies(self, rand_index, batch_size):
