@@ -65,10 +65,10 @@ class ProxySamplerVersione2(Sampler):
 class ProxySampler(Sampler):
 
 
-    def __init__(self, dataset, bank, batch_size, generator=None):
+    def __init__(self, dataset, batch_size, bank, generator=None):
         self.dataset = dataset
         self.batch_size = batch_size
-        #self.length = len(self.dataset)//self.batch_size 
+        self.length = len(self.dataset)//self.batch_size 
         self.generator = generator
         self.bank=bank
         self.first_epoch = 0
@@ -115,8 +115,8 @@ class ProxySampler(Sampler):
         random.shuffle(combined)
         return iter(combined)"""
             
-    #def __len__(self):
-        #return self.length
+    def __len__(self):
+        return self.length
 
 class ProxyHead(nn.Module):
     def __init__(self, in_channels=512, out_channels=256,):
