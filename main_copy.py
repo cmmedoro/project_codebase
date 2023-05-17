@@ -85,8 +85,8 @@ class ProxySampler(Sampler):
             while len(index_bank)>self.batch_size:
                 indexes=random.sample(index_bank, self.batch_size)
                 batches.append(indexes)
-                for el in indexes:
-                    index_bank.pop(el)
+                #for el in indexes:
+                #    index_bank.pop(el)
                 #batches.append(torch.randperm(self.batch_size, generator=self.generator).tolist())
             batches.append(indexes)
         else:
