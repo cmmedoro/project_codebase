@@ -65,7 +65,7 @@ class ProxySamplerVersione2(Sampler):
 class ProxySampler(Sampler):
 
 
-    def __init__(self, dataset, batch_size, generator=None):
+    def __init__(self, dataset, bank, batch_size, generator=None):
         self.dataset = dataset
         self.batch_size = batch_size
         self.length = len(self.dataset)//self.batch_size 
@@ -162,7 +162,7 @@ class ProxyBank():
     def update_index(self):
         self.places=list(self.proxybank.keys())#dopo inizializzazione non viene più modificato
         print(len(self.places))
-        self.proxies=np.array([self.proxybank[key][0].numpy().astype(np.float32).unsqueeze(0) for key in self.places])
+        self.proxies=np.array([self.proxybank[key][0].numpy().astype(np.float32) for key in self.places])#.unsqueeze(0)
         print(self.proxies.shape)
         self.proxy_faiss_index.add_with_ids(self.proxies, self.places)
     
