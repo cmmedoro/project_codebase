@@ -192,7 +192,7 @@ class ProxyBank():
         #print(len(self.places))
         # define the proxies ---> for each place in self.places, consider the compact descriptor in the bank corresponding to
         # that place. Create an array
-        self.proxies = np.array([self.proxybank[key][0].detach().cpu() for key in self.places]) #.numpy().astype(np.float32)
+        self.proxies = np.array([self.proxybank[key][0].detach().cpu().unsqueeze(0) for key in self.places]) #.numpy().astype(np.float32)
         #print("Shape of proxies when updating index")
         #print(self.proxies.shape)
         # add the proxies and the places (labels) to the index
