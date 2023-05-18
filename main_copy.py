@@ -95,9 +95,9 @@ class ProxySampler(Sampler):
             # generator = pseudo-random number generator for sampling
             # numbers from 0 to len(dataset) ---> split the returned list into a number of sublists = batch_size
             self.batches = torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
-            print("Shape of batches at first epoch")
-            print(len(self.batches))
-            self.itercounter += 1
+            #print("Shape of batches at first epoch")
+            #print(len(self.batches))
+            #self.itercounter += 1
             #return iter(self.batches)
         elif self.itercounter % 2 == 0:
             print("Casini nel random evitati")
@@ -115,9 +115,9 @@ class ProxySampler(Sampler):
                 self.bank.remove_places(indexes)
                 self.batches.append(indexes.tolist())
             self.batches.append(self.bank.getkeys())  
-            self.bank.reset()
-            self.itercounter += 1
-            #return iter(batches)
+        self.bank.reset()
+        self.itercounter += 1
+        #return iter(batches)
         return iter(self.batches)
         """Sampler used as model:
         combined = list(first_half_batches + second_half_batches)
@@ -188,13 +188,13 @@ class ProxyBank():
     def update_index(self):
         # save the places as the list of the keys of the proxy bank
         self.places = list(self.proxybank.keys()) # after initialization it is not modified
-        print("Number of places when updating index")
-        print(len(self.places))
+        #print("Number of places when updating index")
+        #print(len(self.places))
         # define the proxies ---> for each place in self.places, consider the compact descriptor in the bank corresponding to
         # that place. Create an array
         self.proxies = np.array([self.proxybank[key][0].numpy().astype(np.float32) for key in self.places])#.unsqueeze(0)
-        print("Shape of proxies when updating index")
-        print(self.proxies.shape)
+        #print("Shape of proxies when updating index")
+        #print(self.proxies.shape)
         # add the proxies and the places (labels) to the index
         self.proxy_faiss_index.add_with_ids(self.proxies, self.places)
     
@@ -239,7 +239,7 @@ class LightningModel(pl.LightningModule):
         self.num_preds_to_save = num_preds_to_save
         self.save_only_wrong_preds = save_only_wrong_preds
         # save loss name and miner name
-        self.loss_name = loss_name
+        self.loss_name = loss_nam
         self.miner_name = miner_name
         self.opt_name = opt_name
         # Save the aggregator name
@@ -284,10 +284,10 @@ class LightningModel(pl.LightningModule):
         descriptors1 = self.aggregator(descriptors)
         #apply the proxyhead to obtain a new dimensionality reduction
         descriptors2 = self.proxyhead(descriptors1)
-        print("Descriptors shape (output of aggregator)")
-        print(descriptors1.shape)
-        print("Output proxy")
-        print(descriptors2.shape)
+        #print("Descriptors shape (output of aggregator)")
+        #print(descriptors1.shape)
+        #print("Output proxy")
+        #print(descriptors2.shape)
         return descriptors1, descriptors2
 
     def configure_optimizers(self):
