@@ -94,7 +94,7 @@ class ProxySampler(Sampler):
             # numbers from 0 to len(dataset) ---> split the returned list into a number of sublists = batch_size
             batches = torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
             print("Shape of batches at first epoch")
-            print(batches.shape)
+            print(len(batches))
             return iter(batches)
         else:
             print("Casini nel random evitati")
