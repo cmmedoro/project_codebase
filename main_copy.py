@@ -98,6 +98,9 @@ class ProxySampler(Sampler):
             return iter(batches)
         else:
             print("Casini nel random evitati")
+            print(self.bank.__len__())
+            print("Number of keys in the bank")
+            print(len(self.bank.getkeys()))
             self.bank.computeavg()
             self.bank.update_index()
             batches=[]
