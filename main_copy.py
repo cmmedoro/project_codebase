@@ -97,7 +97,8 @@ class ProxySampler(Sampler):
             batches = torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
             print("Shape of batches at first epoch")
             print(len(batches))
-            #return iter(batches)
+            self.itercounter += 1
+            return iter(batches)
         elif self.itercounter % 2 == 0:
             print("Casini nel random evitati")
             print(self.bank.__len__())
@@ -115,9 +116,8 @@ class ProxySampler(Sampler):
                 batches.append(indexes.tolist())
             batches.append(self.bank.getkeys())  
             self.bank.reset()
-            #return iter(batches)
-        self.itercounter += 1
-        return iter(batches)
+            self.itercounter += 1
+            return iter(batches)
         """Sampler used as model:
         combined = list(first_half_batches + second_half_batches)
         combined = [batch.tolist() for batch in combined]
