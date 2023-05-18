@@ -321,7 +321,11 @@ class LightningModel(pl.LightningModule):
 
         #at each training iterations the compact descriptors obtained by the forward method after passing through the proxyhead 
         #are added to the bank
+        print("shape of compact descriptors at training step")
+        print(compact.shape)
         self.bank.adddata(compact, labels)
+        print("length of bank after adddata in training_step")
+        print(self.bank.__len__())
         
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
