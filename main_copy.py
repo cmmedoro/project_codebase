@@ -239,7 +239,7 @@ class LightningModel(pl.LightningModule):
         self.num_preds_to_save = num_preds_to_save
         self.save_only_wrong_preds = save_only_wrong_preds
         # save loss name and miner name
-        self.loss_name = loss_nam
+        self.loss_name = loss_name
         self.miner_name = miner_name
         self.opt_name = opt_name
         # Save the aggregator name
