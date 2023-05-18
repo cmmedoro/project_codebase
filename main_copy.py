@@ -75,11 +75,13 @@ class ProxySampler(Sampler):
         seed = int(torch.empty((), dtype=torch.int64).random_().item())
         self.generator = torch.Generator() # to produce pseudo random numbers
         self.generator.manual_seed(seed)
+        # counter for number of times __iter__ is called
+        self.itercounter = 0
         
-    def __iter__(self):
-        if self.first_epoch==0:
+    def __iter__(self): # Lightening Module calls it twice for each epoch
+        if self.first_epoch==0 and self.itercounter % 2 == 0:
             self.first_epoch=1
-            batches=[]
+            #batches=[]
             #index_bank=list(range(len(self.dataset)))
             """
             while len(index_bank)>self.batch_size:
@@ -95,8 +97,8 @@ class ProxySampler(Sampler):
             batches = torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
             print("Shape of batches at first epoch")
             print(len(batches))
-            return iter(batches)
-        else:
+            #return iter(batches)
+        elif self.itercounter % 2 == 0:
             print("Casini nel random evitati")
             print(self.bank.__len__())
             print("Number of keys in the bank")
@@ -113,7 +115,9 @@ class ProxySampler(Sampler):
                 batches.append(indexes.tolist())
             batches.append(self.bank.getkeys())  
             self.bank.reset()
-            return iter(batches)
+            #return iter(batches)
+        self.itercounter += 1
+        return iter(batches)
         """Sampler used as model:
         combined = list(first_half_batches + second_half_batches)
         combined = [batch.tolist() for batch in combined]
