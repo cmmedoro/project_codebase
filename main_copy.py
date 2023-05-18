@@ -168,11 +168,15 @@ class ProxyBank():
         for compact_descriptor, label in zip(compact_descriptors, labels):
             label = int(label)
             if label in self.proxybank.keys(): #if the label is already among the keys of the proxy bank, I just need to update the values
-                self.proxybank[label][0] += compact_descriptor
-                self.proxybank[label][1] += 1
+                #old = self.proxybank[label][0]
+                #old_count = self.proxies[label][1]
+                #old += compact_descriptor
+                #old_count += 1
+                self.proxybank[label][0] = self.proxybank[label][0] + compact_descriptor
+                self.proxybank[label][1] = self.proxybank[label][1] + 1
             else: 
                 # create a new entry of the kind [compact_descriptor, counter_to_increment] for the new label
-                self.proxybank[label]=[compact_descriptor,1]
+                self.proxybank[label] = [compact_descriptor,1]
     
     def computeavg(self):
         # at the end of each epoch we need to compute the compact descriptors for each place
@@ -180,9 +184,6 @@ class ProxyBank():
             # el[0] ---> compact_descriptor
             # el[1] ---> counter with number of descriptors for that label
             el[0] = el[0]/el[1]
-        # this method doesn't return anything ---> either you create a parameter for the bank and update it as such, 
-        # or you need to return something
-        # OR is it so intelligent that it understands it needs to update the values of the proxy bank with the avg_descriptors???
 
     def update_index(self):
         # save the places as the list of the keys of the proxy bank
