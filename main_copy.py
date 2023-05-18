@@ -81,7 +81,7 @@ class ProxySampler(Sampler):
     def __iter__(self): # Lightening Module calls it twice for each epoch
         if self.first_epoch==0 and self.itercounter % 2 == 0:
             self.first_epoch=1
-            #batches=[]
+            batches=[]
             #index_bank=list(range(len(self.dataset)))
             """
             while len(index_bank)>self.batch_size:
