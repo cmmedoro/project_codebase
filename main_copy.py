@@ -95,8 +95,8 @@ class ProxySampler(Sampler):
             # generator = pseudo-random number generator for sampling
             # numbers from 0 to len(dataset) ---> split the returned list into a number of sublists = batch_size
             self.batches = torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
-            #print("Shape of batches at first epoch")
-            #print(len(self.batches))
+            print("Shape of batches at first epoch")
+            print(len(self.batches))
             #self.itercounter += 1
             #return iter(self.batches)
         elif self.itercounter % 2 == 0:
@@ -192,9 +192,9 @@ class ProxyBank():
         #print(len(self.places))
         # define the proxies ---> for each place in self.places, consider the compact descriptor in the bank corresponding to
         # that place. Create an array
-        self.proxies = np.array([self.proxybank[key][0].cpu().detach().numpy().astype(np.float32) for key in self.places])#.unsqueeze(0)
-        #print("Shape of proxies when updating index")
-        #print(self.proxies.shape)
+        self.proxies = np.array([self.proxybank[key][0].detach().cpu() for key in self.places]) #.numpy().astype(np.float32)
+        print("Shape of proxies when updating index")
+        print(self.proxies.shape)
         # add the proxies and the places (labels) to the index
         self.proxy_faiss_index.add_with_ids(self.proxies, self.places)
     
@@ -284,10 +284,10 @@ class LightningModel(pl.LightningModule):
         descriptors1 = self.aggregator(descriptors)
         #apply the proxyhead to obtain a new dimensionality reduction
         descriptors2 = self.proxyhead(descriptors1)
-        #print("Descriptors shape (output of aggregator)")
-        #print(descriptors1.shape)
-        #print("Output proxy")
-        #print(descriptors2.shape)
+        print("Descriptors shape (output of aggregator)")
+        print(descriptors1.shape)
+        print("Output proxy")
+        print(descriptors2.shape)
         return descriptors1, descriptors2
 
     def configure_optimizers(self):
