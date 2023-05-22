@@ -27,6 +27,8 @@ def parse_arguments():
                         help="define the optimizer to implement")
     parser.add_argument("--aggr", type=str, default="gem",
                         help="training aggregator to implement")
+    parser.add_argument("--scheduler", type = str, default = None,
+                        help = "Define a scheduler to adap the learning rate")
     
     # Visualizations parameters
     parser.add_argument("--num_preds_to_save", type=int, default=0,
