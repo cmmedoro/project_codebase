@@ -99,11 +99,13 @@ class LightningModel(pl.LightningModule):
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode = "min", patience = 2)
         elif(self.sched_name.lower() == "onecycle"):
             scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizers, max_lr = 0.01, epochs = self.max_epochs, steps_per_epoch = len(train_loader))
+        else:
+            scheduler = None
         #cosface and arcface assume normalization ---> similar to linear layers
         if self.loss_name == "cosface" or self.loss_name == "arcface":
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
             return [optimizers, self.loss_optimizer], [scheduler]
-        return optimizers, scheduler
+        return [optimizers], [scheduler]
 
 
     #  The loss function call (this method will be called at each training iteration)
