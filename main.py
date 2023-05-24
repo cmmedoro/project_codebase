@@ -67,7 +67,7 @@ class LightningModel(pl.LightningModule):
                 ag.get_aggregator(agg_arch, agg_config),
                 #MixVpr output is (256, 2048). We apply a final fully connected (as in original structure of ResNet-18), considering
                 # as input features size 2048, and output features stays the same (512)
-                nn.Linear(1024, descriptors_dim)
+                nn.Linear(2048, descriptors_dim)
             )
         # Set the loss function
         self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#add num_classes and embedding_size
