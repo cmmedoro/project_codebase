@@ -110,7 +110,7 @@ class LightningModel(pl.LightningModule):
         #if(scheduler is None):
         #    return optimizers
         #return [optimizers], scheduler
-        return {"optimizer": optimizers, "lr_scheduler": scheduler, "monitor" : "val_loss"}
+        return {"optimizer": optimizers, "lr_scheduler": scheduler, "monitor" : "loss"}
     #{"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "metric_to_track"}
 
 
