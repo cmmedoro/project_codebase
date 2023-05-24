@@ -94,13 +94,13 @@ class LightningModel(pl.LightningModule):
             optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
         # define the scheduler to adjust the learning rate
         if(self.sched_name == None):
-            scheduler = []
+            scheduler = None
         elif(self.sched_name.lower() == "cosineannealing"):
-            scheduler = [torch.optim.lr_scheduler.CosineAnnealingLR(optimizers, self.max_epochs)]
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizers, self.max_epochs)
         elif(self.sched_name.lower() == "plateau"):
-            scheduler = [torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode = "min", patience = 2)]
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode = "min", patience = 2)
         elif(self.sched_name.lower() == "onecycle"):
-            scheduler = [torch.optim.lr_scheduler.OneCycleLR(optimizers, max_lr = 0.01, epochs = self.max_epochs, steps_per_epoch = len(train_loader))]
+            scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizers, max_lr = 0.01, epochs = self.max_epochs, steps_per_epoch = len(train_loader))
         #cosface and arcface assume normalization ---> similar to linear layers
         if self.loss_name == "cosface" or self.loss_name == "arcface":
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
