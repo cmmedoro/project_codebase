@@ -109,7 +109,9 @@ class LightningModel(pl.LightningModule):
             return [optimizers, self.loss_optimizer], scheduler
         #if(scheduler is None):
         #    return optimizers
-        return [optimizers], scheduler
+        #return [optimizers], scheduler
+        return {"optimizer": optimizers, "lr_scheduler": scheduler, "monitor" : "metric_to_track"}
+    #{"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "metric_to_track"}
 
 
     #  The loss function call (this method will be called at each training iteration)
