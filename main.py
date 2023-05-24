@@ -104,7 +104,11 @@ class LightningModel(pl.LightningModule):
         #cosface and arcface assume normalization ---> similar to linear layers
         if self.loss_name == "cosface" or self.loss_name == "arcface":
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
+            if(scheduler is None):
+                return [optimizers, self.loss_optimizer]
             return [optimizers, self.loss_optimizer], [scheduler]
+        if(scheduler is None):
+            return optimizers
         return [optimizers], [scheduler]
 
 
