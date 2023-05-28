@@ -134,6 +134,7 @@ class LightningModel(pl.LightningModule):
         # Feed forward the batch to the model
         descriptors = self(images)  # Here we are calling the method forward that we defined above
         loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
+        
 
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}

@@ -12,7 +12,6 @@ default_transform = tfm.Compose([
     tfm.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
 ])
 
-
 class TrainDataset(Dataset):
     def __init__(
         self,
@@ -55,3 +54,11 @@ class TrainDataset(Dataset):
     def __len__(self):
         """Denotes the total number of places (not images)"""
         return len(self.places_ids)
+    
+    def get_avg_image_per_place(self):
+        tot=0
+        num=0
+        for key, value in self.dict_place_paths.items():
+            tot+=len(value)
+            num+=1    
+        return tot/num

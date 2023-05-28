@@ -95,15 +95,15 @@ class ProxySampler(Sampler):
             # generator = pseudo-random number generator for sampling
             # numbers from 0 to len(dataset) ---> split the returned list into a number of sublists = batch_size
             self.batches = torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
-            print("Shape of batches at first epoch")
-            print(len(self.batches))
+            #print("Shape of batches at first epoch")
+            #print(len(self.batches))
             #self.itercounter += 1
             #return iter(self.batches)
         elif self.itercounter % 2 == 0:
-            print("Casini nel random evitati")
-            print(self.bank.__len__())
-            print("Number of keys in the bank")
-            print(len(self.bank.getkeys()))
+            #print("Casini nel random evitati")
+            #print(self.bank.__len__())
+            #print("Number of keys in the bank")
+            #print(len(self.bank.getkeys()))
             self.bank.computeavg()
             self.bank.update_index()
             self.batches=[]
@@ -176,7 +176,7 @@ class ProxyBank():
                 self.proxybank[label][1] = self.proxybank[label][1] + 1
             else: 
                 # create a new entry of the kind [compact_descriptor, counter_to_increment] for the new label
-                self.proxybank[label] = [compact_descriptor,1]
+                self.proxybank[label] = [compact_descriptor, 1]
     
     def computeavg(self):
         # at the end of each epoch we need to compute the compact descriptors for each place
@@ -230,14 +230,14 @@ class ProxyBank():
         return len(self.proxybank)
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD", agg_arch='gem', agg_config={}, bank=None):
+    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD", agg_arch='gem', bank=None, agg_config={}):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
         # add num_classes
         self.num_classes = num_classes
-        print(num_classes)
-        print(self.num_classes)
+        #print(num_classes)
+        #print(self.num_classes)
         self.num_preds_to_save = num_preds_to_save
         self.save_only_wrong_preds = save_only_wrong_preds
         # save loss name and miner name
@@ -277,6 +277,8 @@ class LightningModel(pl.LightningModule):
         # Set the loss function
         self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace
+        # Define the loss for the proxy head
+        self.loss_head = lm.get_loss(loss_name, num_classes, self.embedding_size)
         # Set the miner
         self.miner = lm.get_miner(miner_name)
         
@@ -286,10 +288,10 @@ class LightningModel(pl.LightningModule):
         descriptors1 = self.aggregator(descriptors)
         #apply the proxyhead to obtain a new dimensionality reduction
         descriptors2 = self.proxyhead(descriptors1)
-        print("Descriptors shape (output of aggregator)")
-        print(descriptors1.shape)
-        print("Output proxy")
-        print(descriptors2.shape)
+        #print("Descriptors shape (output of aggregator)")
+        #print(descriptors1.shape)
+        #print("Output proxy")
+        #print(descriptors2.shape)
         return descriptors1, descriptors2
 
     def configure_optimizers(self):
@@ -301,10 +303,27 @@ class LightningModel(pl.LightningModule):
             optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
         if self.opt_name.lower() == "asgd":
             optimizers = torch.optim.ASGD(self.parameters(), lr=0.01, lambd=0.0001, alpha=0.75, t0=1000000.0, weight_decay=0)
+        # define the scheduler to adjust the learning rate
+        if(self.sched_name == None):
+            scheduler = None
+        elif(self.sched_name.lower() == "cosineannealing"):
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizers, self.max_epochs)
+        elif(self.sched_name.lower() == "plateau"):
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode = "min", patience = 2)
+        elif(self.sched_name.lower() == "onecycle"):
+            scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizers, max_lr = 0.01, epochs = self.max_epochs, steps_per_epoch = len(train_loader))
+        #cosface and arcface assume normalization ---> similar to linear layers
         if self.loss_name == "cosface" or self.loss_name == "arcface":
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
-            return [optimizers, self.loss_optimizer]
-        return optimizers
+            if(scheduler is None):
+                return [optimizers, self.loss_optimizer]
+            #return [optimizers, self.loss_optimizer], scheduler
+            return {"optimizer": [optimizers, self.loss_optimizer], "lr_scheduler": scheduler, "monitor" : "loss"}
+        if(scheduler is None):
+            return optimizers
+        #return [optimizers], scheduler
+        return {"optimizer": optimizers, "lr_scheduler": scheduler, "monitor" : "loss"}
+    #{"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "metric_to_track"}
 
 
     #  The loss function call (this method will be called at each training iteration)
@@ -325,15 +344,15 @@ class LightningModel(pl.LightningModule):
 
         # Feed forward the batch to the model
         descriptors, compact = self(images)  # Here we are calling the method forward that we defined above
-        loss = self.loss_function(descriptors, labels)  # Call the loss_function we defined above
+        loss = self.loss_function(descriptors, labels) + self.loss_head(compact,labels) # Call the loss_function we defined above
 
         #at each training iterations the compact descriptors obtained by the forward method after passing through the proxyhead 
         #are added to the bank
-        print("shape of compact descriptors at training step")
+        """print("shape of compact descriptors at training step")
         print(compact.shape)
         self.bank.adddata(compact, labels)
         print("length of bank after adddata in training_step")
-        print(self.bank.__len__())
+        print(self.bank.__len__())"""
         
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
