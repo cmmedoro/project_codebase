@@ -230,7 +230,7 @@ class ProxyBank():
         return len(self.proxybank)
 
 class LightningModel(pl.LightningModule):
-    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD", agg_arch='gem', bank=None, agg_config={}):
+    def __init__(self, val_dataset, test_dataset, num_classes, descriptors_dim=512, num_preds_to_save=0, save_only_wrong_preds=True, sched_name = None, max_epochs = 20, loss_name = "contrastive_loss", miner_name = None, opt_name = "SGD", agg_arch='gem', bank=None, agg_config={}):
         super().__init__()
         self.val_dataset = val_dataset
         self.test_dataset = test_dataset
@@ -244,6 +244,7 @@ class LightningModel(pl.LightningModule):
         self.loss_name = loss_name
         self.miner_name = miner_name
         self.opt_name = opt_name
+        self.sched_name = sched_name
         # Save the aggregator name
         self.agg_arch = agg_arch
         self.agg_config = agg_config
@@ -419,7 +420,7 @@ if __name__ == '__main__':
     bank = ProxyBank(256)
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args, bank)
     num_classes = train_dataset.__len__()
-    model = LightningModel(val_dataset, test_dataset, num_classes, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.loss_func, args.miner, args.optimizer, args.aggr, bank = bank)
+    model = LightningModel(val_dataset, test_dataset, num_classes, args.descriptors_dim, args.num_preds_to_save, args.save_only_wrong_preds, args.scheduler, args.max_epochs, args.loss_func, args.miner, args.optimizer, args.aggr, bank = bank)
     
     # Model params saving using Pytorch Lightning. Save the best 3 models according to Recall@1
     checkpoint_cb = ModelCheckpoint(
