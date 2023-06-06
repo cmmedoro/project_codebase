@@ -240,6 +240,7 @@ class LightningModel(pl.LightningModule):
         #print(self.num_classes)
         self.num_preds_to_save = num_preds_to_save
         self.save_only_wrong_preds = save_only_wrong_preds
+        self.max_epochs = max_epochs
         # save loss name and miner name
         self.loss_name = loss_name
         self.miner_name = miner_name
