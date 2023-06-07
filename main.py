@@ -99,6 +99,10 @@ class LightningModel(pl.LightningModule):
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizers, self.max_epochs)
         elif(self.sched_name.lower() == "plateau"):
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizers, mode = "min", patience = 2)
+        elif(self.sched_name.lower() == "step"):
+            scheduler = torch.optim.lr_scheduler.StepLR(optimizers, step_size = 5)
+        elif(self.sched_name.lower() == "exponential"):
+            scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizers, gamma = 0.9)
         elif(self.sched_name.lower() == "onecycle"):
             scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizers, max_lr = 0.01, epochs = self.max_epochs, steps_per_epoch = len(train_loader))
         #cosface and arcface assume normalization ---> similar to linear layers
