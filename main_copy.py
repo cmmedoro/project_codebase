@@ -24,46 +24,9 @@ from torch.utils.data.sampler import Sampler, BatchSampler, SubsetRandomSampler
 import faiss
 import random
 
-class ProxySamplerVersione2(Sampler):
-
-    first_epoch=0
-
-    def __init__(self, dataset, batch_size, generator=None):
-        self.dataset = dataset
-        self.batch_size = batch_size
-        self.generator = generator
-        #Take the bank you have defined at the end of the previous epoch(in inference epoch end)
-        #compute the final averages and instantiate the index
-        global bank
-        bank.computeavg()
-        #self.proxies= Proxies(bank)
-        seed = int(torch.empty((), dtype=torch.int64).random_().item())
-        self.generator = torch.Generator()
-        self.generator.manual_seed(seed)
-        
-    def __iter__(self):
-        if first_epoch==0:
-            first_epoch=1
-            for _ in range( len(self.dataset)// self.batch_size):
-                yield from torch.randperm(self.batch_size, generator=self.generator).tolist()
-            yield from torch.randperm(self.batch_size, generator=self.generator).tolist()[:len(self.dataset) % self.batch_size]
-        else:
-            while bank.__len__()>self.batch_size:
-                randint = random.choice(bank.getkeys)
-                #take neareast neighbors of the random place as selected places for the new batch
-                #then remove selected places both from bank and from index
-                indexes= self.proxies.getproxies(rand_index=randint, batch_size=self.batch_size)
-                bank.remove_places(indexes)
-                self.proxies.remove_places(indexes)
-                yield indexes
-            yield np.array(bank.getkeys)
-            
-    def __len__(self):
-        return self._len
-    
 
 class ProxySampler(Sampler):
-    def __init__(self, dataset, batch_size, bank, generator=None):
+    def __init__(self, dataset, batch_size, bank, num_workers, generator=None):
         self.dataset = dataset
         self.batch_size = batch_size
         self.length = len(self.dataset)//self.batch_size 
@@ -75,35 +38,20 @@ class ProxySampler(Sampler):
         seed = int(torch.empty((), dtype=torch.int64).random_().item())
         self.generator = torch.Generator() # to produce pseudo random numbers
         self.generator.manual_seed(seed)
+        #store the number of workers instantiated because the iter method is going to be called a number of times equal to this value
+        self.num_workers = num_workers
         # counter for number of times __iter__ is called
         self.itercounter = 0
         self.batches = []
         
-    def __iter__(self): # Lightening Module calls it twice for each epoch
-        if self.first_epoch==0 and self.itercounter % 2 == 0:
+    def __iter__(self): # Lightening Module calls it a number of times for each epoch equal to the number of workers (based on GPU parallelization)
+        if self.first_epoch==0 and self.itercounter % self.num_workers == 0:
             self.first_epoch=1
-            #index_bank=list(range(len(self.dataset)))
-            """
-            while len(index_bank)>self.batch_size:
-                indexes=random.sample(index_bank, self.batch_size)
-                batches.append(indexes)
-                #for el in indexes:
-                #    index_bank.pop(el)
-                #batches.append(torch.randperm(self.batch_size, generator=self.generator).tolist())
-            batches.append(indexes)"""
             # torch.randperm(n) returns a random permutation of numbers from 0 to n-1
             # generator = pseudo-random number generator for sampling
             # numbers from 0 to len(dataset) ---> split the returned list into a number of sublists = batch_size
             self.batches = torch.randperm(len(self.dataset), generator=self.generator).split(self.batch_size)
-            #print("Shape of batches at first epoch")
-            #print(len(self.batches))
-            #self.itercounter += 1
-            #return iter(self.batches)
-        elif self.itercounter % 2 == 0:
-            #print("Casini nel random evitati")
-            #print(self.bank.__len__())
-            #print("Number of keys in the bank")
-            #print(len(self.bank.getkeys()))
+        elif self.itercounter % self.num_workers == 0:
             self.bank.computeavg()
             self.bank.update_index()
             self.batches=[]
@@ -117,13 +65,7 @@ class ProxySampler(Sampler):
             self.batches.append(self.bank.getkeys())  
         self.bank.reset()
         self.itercounter += 1
-        #return iter(batches)
         return iter(self.batches)
-        """Sampler used as model:
-        combined = list(first_half_batches + second_half_batches)
-        combined = [batch.tolist() for batch in combined]
-        random.shuffle(combined)
-        return iter(combined)"""
             
     def __len__(self):
         return self.length
@@ -168,10 +110,6 @@ class ProxyBank():
         for compact_descriptor, label in zip(compact_descriptors, labels):
             label = int(label)
             if label in self.proxybank.keys(): #if the label is already among the keys of the proxy bank, I just need to update the values
-                #old = self.proxybank[label][0]
-                #old_count = self.proxies[label][1]
-                #old += compact_descriptor
-                #old_count += 1
                 self.proxybank[label][0] = self.proxybank[label][0] + compact_descriptor
                 self.proxybank[label][1] = self.proxybank[label][1] + 1
             else: 
@@ -188,13 +126,9 @@ class ProxyBank():
     def update_index(self):
         # save the places as the list of the keys of the proxy bank
         self.places = np.array(list(self.proxybank.keys())) # after initialization it is not modified
-        #print("Number of places when updating index")
-        #print(len(self.places))
         # define the proxies ---> for each place in self.places, consider the compact descriptor in the bank corresponding to
         # that place. Create an array
-        self.proxies = np.array([self.proxybank[key][0].detach().cpu().numpy() for key in self.places]) #.numpy().astype(np.float32)
-        #print("Shape of proxies when updating index")
-        #print(self.proxies.shape)
+        self.proxies = np.array([self.proxybank[key][0].detach().cpu().numpy() for key in self.places])
         # add the proxies and the places (labels) to the index
         self.proxy_faiss_index.add_with_ids(self.proxies, self.places)
     
@@ -236,8 +170,6 @@ class LightningModel(pl.LightningModule):
         self.test_dataset = test_dataset
         # add num_classes
         self.num_classes = num_classes
-        #print(num_classes)
-        #print(self.num_classes)
         self.num_preds_to_save = num_preds_to_save
         self.save_only_wrong_preds = save_only_wrong_preds
         self.max_epochs = max_epochs
@@ -300,7 +232,7 @@ class LightningModel(pl.LightningModule):
         if self.opt_name.lower() == "sgd":
             optimizers = torch.optim.SGD(self.parameters(), lr=0.001, weight_decay=0.001, momentum=0.9)
         if self.opt_name.lower() == "adamw":
-            optimizers = torch.optim.AdamW(self.parameters(), lr=0.001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
+            optimizers = torch.optim.AdamW(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0.01)
         if self.opt_name.lower() == "adam":
             optimizers = torch.optim.Adam(self.parameters(), lr=0.0001, betas=(0.9, 0.999), eps=1e-08, weight_decay=0)
         if self.opt_name.lower() == "asgd":
@@ -323,13 +255,10 @@ class LightningModel(pl.LightningModule):
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
             if(scheduler is None):
                 return [optimizers, self.loss_optimizer]
-            #return [optimizers, self.loss_optimizer], scheduler
             return {"optimizer": [optimizers, self.loss_optimizer], "lr_scheduler": scheduler, "monitor" : "loss"}
         if(scheduler is None):
             return optimizers
-        #return [optimizers], scheduler
         return {"optimizer": optimizers, "lr_scheduler": scheduler, "monitor" : "loss"}
-    #{"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "metric_to_track"}
 
 
     #  The loss function call (this method will be called at each training iteration)
@@ -354,11 +283,7 @@ class LightningModel(pl.LightningModule):
 
         #at each training iterations the compact descriptors obtained by the forward method after passing through the proxyhead 
         #are added to the bank
-        #print("shape of compact descriptors at training step")
-        #print(compact.shape)
         self.bank.adddata(compact, labels)
-        #print("length of bank after adddata in training_step")
-        #print(self.bank.__len__())"""
         
         self.log('loss', loss.item(), logger=True)
         return {'loss': loss}
@@ -410,8 +335,7 @@ def get_datasets_and_dataloaders(args, bank):
     )
     val_dataset = TestDataset(dataset_folder=args.val_path)
     test_dataset = TestDataset(dataset_folder=args.test_path)
-    #train_loader = DataLoader(dataset=train_dataset, batch_size=args.batch_size, num_workers=args.num_workers, shuffle=True)
-    train_loader = DataLoader(dataset=train_dataset, num_workers=args.num_workers, batch_sampler = ProxySampler(train_dataset, args.batch_size, bank))#BatchSampler=ProxySamplerVersione2)
+    train_loader = DataLoader(dataset=train_dataset, num_workers=args.num_workers, batch_sampler = ProxySampler(train_dataset, args.batch_size, bank, num_workers = args.num_workers))
     val_loader = DataLoader(dataset=val_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     test_loader = DataLoader(dataset=test_dataset, batch_size=args.batch_size, num_workers=4, shuffle=False)
     return train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader
@@ -421,7 +345,6 @@ if __name__ == '__main__':
     args = parser1.parse_arguments()
 
     # define the ProxyBank
-    #bank = ProxyBank(args.descriptors_dim)
     bank = ProxyBank(256)
     train_dataset, val_dataset, test_dataset, train_loader, val_loader, test_loader = get_datasets_and_dataloaders(args, bank)
     num_classes = train_dataset.__len__()
@@ -450,11 +373,6 @@ if __name__ == '__main__':
         reload_dataloaders_every_n_epochs=1,  # we reload the dataset to shuffle the order
         log_every_n_steps=20,
     )
-
-    #if(args.ckpt_path == None):
-     #   trainer.validate(model=model, dataloaders=val_loader)
-      #  trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    #trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)
 
     if(args.only_test == False):
         trainer.validate(model=model, dataloaders=val_loader, ckpt_path = args.ckpt_path)
