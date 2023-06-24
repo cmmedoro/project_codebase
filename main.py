@@ -105,18 +105,16 @@ class LightningModel(pl.LightningModule):
             scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizers, gamma = 0.9)
         elif(self.sched_name.lower() == "onecycle"):
             scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizers, max_lr = 0.01, epochs = self.max_epochs, steps_per_epoch = len(train_loader))
-        #cosface and arcface assume normalization ---> similar to linear layers
-        if self.loss_name == "cosface" or self.loss_name == "arcface":
+        #NOT USED: cosface and arcface assume normalization ---> similar to linear layers
+        """if self.loss_name == "cosface" or self.loss_name == "arcface":
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
             if(scheduler is None):
                 return [optimizers, self.loss_optimizer]
             #return [optimizers, self.loss_optimizer], scheduler
-            return {"optimizer": [optimizers, self.loss_optimizer], "lr_scheduler": scheduler, "monitor" : "loss"}
+            return {"optimizer": [optimizers, self.loss_optimizer], "lr_scheduler": scheduler, "monitor" : "loss"}"""
         if(scheduler is None):
             return optimizers
-        #return [optimizers], scheduler
         return {"optimizer": optimizers, "lr_scheduler": scheduler, "monitor" : "loss"}
-    #{"optimizer": optimizer, "lr_scheduler": scheduler, "monitor": "metric_to_track"}
 
 
     #  The loss function call (this method will be called at each training iteration)
@@ -227,11 +225,6 @@ if __name__ == '__main__':
         log_every_n_steps=20,
     )
 
-    """if(args.ckpt_path == None):
-        trainer.validate(model=model, dataloaders=val_loader)
-        trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader)
-    trainer.test(model=model, dataloaders=test_loader, ckpt_path=args.ckpt_path)
-    """
 
     if(args.only_test == False):
         trainer.validate(model=model, dataloaders=val_loader, ckpt_path = args.ckpt_path)

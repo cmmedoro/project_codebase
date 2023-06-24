@@ -77,10 +77,7 @@ class ProxyHead(nn.Module):
         self.out_channels = out_channels
         #define a dimensionality reduction operation considering (512, 256)
         self.dimred= nn.Linear(in_channels, out_channels) 
-        self.norm=ag.L2Norm()#Ragionare bene su quale dimensione devo andare ad agire
-        #di default la dimensione è la 1
-        #dovrei ricevere in input qualcosa che ha come dimensione[0] 256 (le immagini di un batch)
-        #e come dimensione[1] 512, ovvero descriptors_dim
+        self.norm=ag.L2Norm()
 
     def forward(self, x):
         #apply dimensionality reduction
@@ -135,8 +132,6 @@ class ProxyBank():
     def getproxies(self, rand_index, batch_size):
         # Here you want to get the k = batch_size closest descriptors to the one corresponding to the rand_index
         _, indexes = self.proxy_faiss_index.search(self.proxybank[rand_index][0].unsqueeze(0).detach().cpu().numpy(), batch_size)       
-        #alternativa: self.proxy_faiss_index.search(self.proxies[rand_index], batch_size)
-        #ma ti devi fidare di come lui mette i descrittori dentro l'indice
         return indexes[0]
 
     def reset(self):
@@ -248,14 +243,12 @@ class LightningModel(pl.LightningModule):
             scheduler = torch.optim.lr_scheduler.StepLR(optimizers, step_size = 5)
         elif(self.sched_name.lower() == "exponential"):
             scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizers, gamma = 0.9)
-        elif(self.sched_name.lower() == "onecycle"):
-            scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizers, max_lr = 0.01, epochs = self.max_epochs, steps_per_epoch = len(train_loader))
-        #cosface and arcface assume normalization ---> similar to linear layers
-        if self.loss_name == "cosface" or self.loss_name == "arcface":
+        #NOT USED: cosface and arcface assume normalization ---> similar to linear layers
+        """if self.loss_name == "cosface" or self.loss_name == "arcface":
             self.loss_optimizer = torch.optim.SGD(self.loss_fn.parameters(), lr = 0.01)
             if(scheduler is None):
                 return [optimizers, self.loss_optimizer]
-            return {"optimizer": [optimizers, self.loss_optimizer], "lr_scheduler": scheduler, "monitor" : "loss"}
+            return {"optimizer": [optimizers, self.loss_optimizer], "lr_scheduler": scheduler, "monitor" : "loss"}"""
         if(scheduler is None):
             return optimizers
         return {"optimizer": optimizers, "lr_scheduler": scheduler, "monitor" : "loss"}

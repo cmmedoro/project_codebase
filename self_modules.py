@@ -19,11 +19,11 @@ class GeM(nn.Module):
         
     def gem(self, x, p=3, eps=1e-6):
         # define the gem operation as follows:
-        # apply a 2D average pooling operation in kH x kW regions by step size sH x sW steps
-        # input: descriptors limited in range [1e-6, inf) and we consider the values at the power of 3
+        # apply a 2D average pooling operation on each feature map
+        # input: descriptors limited in range [1e-6, inf) and we consider the values at the power of p
         # kernel size is a tuple considering size of the second to last dimension and the last one
-            # ---> pooling region (kH, kW)
-        # the result f the average pooling operation is elevated at the power of 1/3
+        # ---> pooling region (kH, kW)
+        # the result f the average pooling operation is elevated at the power of 1/p
         return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1./p)
         
     def __repr__(self):
@@ -116,28 +116,4 @@ class MixVPR(nn.Module):
         x = F.normalize(x.flatten(1), p=2, dim=-1)
         #output: (256, 2048)
         return x
-    """
-        
-#def print_nb_params(m):
- #   model_parameters = filter(lambda p: p.requires_grad, m.parameters())
-  #  params = sum([np.prod(p.size()) for p in model_parameters])
-   # print(f'Trainable parameters: {params/1e6:.3}M')
-
-
-def main():
-    x = torch.randn(1, 1024, 20, 20)
-    agg = MixVPR(
-        in_channels=1024,
-        in_h=20,
-        in_w=20,
-        out_channels=1024,
-        mix_depth=4,
-        mlp_ratio=1,
-        out_rows=4)
-
-    print_nb_params(agg)
-    output = agg(x)
-    print(output.shape)
-
-if __name__ == '__main__':
-    main()"""
+   
