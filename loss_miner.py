@@ -11,12 +11,12 @@ def get_loss(loss_name, num_classes, embedding_size):#add num_classes to give to
         return losses.TripletMarginLoss()
     if loss_name == "multisimilarity":
         return losses.MultiSimilarityLoss()
-    if loss_name == "cosface": #try with smaller scale
+    #NOT USED
+    """if loss_name == "cosface": #try with smaller scale
         return losses.CosFaceLoss(num_classes = num_classes, embedding_size = embedding_size, margin = 0.35, scale = 64).to(torch.device('cuda'))
     if loss_name == "arcface": #requires an optimizer; cosine similarity is the only compatible distance
-        return losses.ArcFaceLoss(num_classes = num_classes, embedding_size = embedding_size, margin=28.6, scale=64).to(torch.device('cuda'))
-    if loss_name == "vicreg":
-        return losses.VICRegLoss()
+        return losses.ArcFaceLoss(num_classes = num_classes, embedding_size = embedding_size, margin=28.6, scale=64).to(torch.device('cuda'))"""
+    
 
 def get_miner(miner_name):
     miner = None
@@ -24,6 +24,4 @@ def get_miner(miner_name):
         miner = miners.TripletMarginMiner()
     if miner_name == "multisimilarity":
         miner = miners.MultiSimilarityMiner()
-    if miner_name == "batch_hard":
-        miner = miners.BatchHardMiner()
     return miner

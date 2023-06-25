@@ -22,8 +22,10 @@ class GeM(nn.Module):
         # apply a 2D average pooling operation on each feature map
         # input: descriptors limited in range [1e-6, inf) and we consider the values at the power of p
         # kernel size is a tuple considering size of the second to last dimension and the last one
-        # ---> pooling region (kH, kW)
-        # the result f the average pooling operation is elevated at the power of 1/p
+        # ---> (h*w, the entire feature map)        
+        # returns a vector of size c (512)
+        # each feature map is summarized by one value, with the formula of generalized mean that can be found on the paper
+        # clamp with epsilon almost zero because it is required by the paper that the last layer is a relu
         return F.avg_pool2d(x.clamp(min=eps).pow(p), (x.size(-2), x.size(-1))).pow(1./p)
         
     def __repr__(self):
@@ -43,7 +45,7 @@ class FeatureMixerLayer(nn.Module):
             # apply fc layer with input_features = 49*1 and output features
             nn.Linear(int(in_dim * mlp_ratio), in_dim), 
         )
-        #in Figure 2 of the paper mixVPr we can see that the feature mixer(that will be repeated L times) is composed 
+        # in Figure 2 of the paper mixVPr we can see that the feature mixer(that will be repeated L times) is composed 
         # exactly by these stages: normalization, projection, activation and projection
         # self.modules() = iterator over all the modules of the network
         for m in self.modules():
