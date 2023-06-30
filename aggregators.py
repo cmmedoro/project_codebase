@@ -18,6 +18,8 @@ def get_aggregator(agg_arch, agg_config={}):
                 'mlp_ratio' : 1,
                 'out_rows' : 4}
         return sm.MixVPR(**agg_config)
+    elif 'myaggr'in agg_arch.lower():
+        return sm.MyAggregator()
     
 class Flatten(torch.nn.Module):
     def __init__(self): 

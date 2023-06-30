@@ -13,7 +13,7 @@ def parse_arguments():
                         help="places with less than min_img_per_place are removed")
     parser.add_argument("--max_epochs", type=int, default=20,
                         help="stop when training reaches max_epochs")
-    parser.add_argument("--num_workers", type=int, default=8,
+    parser.add_argument("--num_workers", type=int, default=1,
                         help="number of processes to use for data loading / preprocessing")
 
     # Architecture parameters

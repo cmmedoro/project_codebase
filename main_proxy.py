@@ -203,6 +203,14 @@ class LightningModel(pl.LightningModule):
                 ag.get_aggregator(agg_arch, agg_config),
                 nn.Linear(2048, descriptors_dim)
             )
+        elif self.agg_arch == "myaggr":
+            self.aggregator = nn.Sequential(
+                #performs L2 normalization; doesn't change dimensions 
+                ag.L2Norm(),
+                #call the gem aggregator: output of size (num_batches, 512, 7, 7)
+                ag.get_aggregator(agg_arch, agg_config),
+                nn.Linear(4096, descriptors_dim)
+            )
         # Set the loss function
         self.loss_fn = lm.get_loss(loss_name, num_classes, self.embedding_size)#idea: send not only the name of the loss you want
                                             # but also the num_classes in case it is CosFace or ArcFace

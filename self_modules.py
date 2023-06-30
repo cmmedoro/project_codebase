@@ -118,4 +118,31 @@ class MixVPR(nn.Module):
         x = F.normalize(x.flatten(1), p=2, dim=-1)
         #output: (256, 2048)
         return x
+
+#class of a potential new aggregator
+class MyAggregator(nn.Module):
+    def _init_(self, eps=1e-6):
+        super(MyAggregator,self)._init_()
+        self.eps = eps
+
+    def forward(self, x):
+        x=self.summarize_feature_map(x)
+        x=x.flatten(1)
+        #print("final output")
+        #print(x.size())
+        return x
+            
+    def summarize_feature_map(self, x, eps=1e-6):
+        kernel_size =x.size(-2)//2+1  #x.size(-1)//2+1
+        mean =  F.avg_pool2d(x.clamp(min=eps), (kernel_size, kernel_size), stride=(x.size(-2)//2))
+        mean_of_squared= F.avg_pool2d(x.clamp(min=eps).pow(2), (kernel_size, kernel_size), stride=(x.size(-2)//2))
+        """print("size of mean and mean of squares:")
+        print(mean.size())
+        print(mean_of_squared.size())"""
+        estimator_v = ((mean_of_squared - mean.pow(2))*(kernel_size**2)/(kernel_size**2 - 1)).flatten(2)
+        mean=mean.flatten(2)
+        result=torch.stack((mean,estimator_v), dim=-1).flatten(2)
+        #print("output size after aggregating feature map")
+        #print(result.size())
+        return result
    
